@@ -26,4 +26,11 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             ORDER BY m.matchDate ASC
             """)
     List<Match> findActiveOrRecentMatches(LocalDateTime since);
+
+    /**
+     * 수동 입력 경기(fixtureId >= 1_000_000) 중 최댓값.
+     * 다음 수동 fixtureId 생성에 사용.
+     */
+    @Query("SELECT MAX(m.fixtureId) FROM Match m WHERE m.fixtureId >= 1000000")
+    Optional<Integer> findMaxManualFixtureId();
 }

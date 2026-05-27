@@ -71,6 +71,12 @@ export default function RootLayout({
                 >
                   도움 순위
                 </a>
+                <a
+                  href="/admin"
+                  className="px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-xs border border-border/50 ml-2"
+                >
+                  &#x2699;&#xFE0F; 관리
+                </a>
               </nav>
 
               {/* 테마 토글 */}

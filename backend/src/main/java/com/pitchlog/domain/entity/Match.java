@@ -18,7 +18,11 @@ public class Match {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "fixture_id", unique = true, nullable = false)
+    /**
+     * API-Football fixture ID (배치 수집 시 설정).
+     * 수동 입력 경기는 null로 저장 후 DB id 값으로 자동 할당.
+     */
+    @Column(name = "fixture_id", unique = true)
     private Integer fixtureId;
 
     /** "Group Stage - 1", "Round of 16", "Quarter-finals" 등 */
@@ -80,6 +84,7 @@ public class Match {
 
     // ── Factory methods ───────────────────────────────────────────────────────
 
+    /** API-Football 배치 수집용 */
     public static Match create(Integer fixtureId, String round, LocalDateTime matchDate,
                                String venueName, String venueCity,
                                String statusShort, String statusLong, Integer elapsed,
@@ -107,6 +112,32 @@ public class Match {
         return m;
     }
 
+    /**
+     * 수동 입력용 — fixtureId는 서비스에서 1_000_000+ 범위로 미리 생성해 전달.
+     * API-Football ID(보통 수십만 이하)와 충돌하지 않음.
+     */
+    public static Match createManual(Integer fixtureId, String round, LocalDateTime matchDate,
+                                     String venueName, String venueCity,
+                                     String homeTeamName, String homeTeamLogo,
+                                     String awayTeamName, String awayTeamLogo,
+                                     String groupName) {
+        Match m = new Match();
+        m.fixtureId = fixtureId;
+        m.round = round;
+        m.matchDate = matchDate;
+        m.venueName = venueName;
+        m.venueCity = venueCity;
+        m.statusShort = "NS";
+        m.statusLong = "Not Started";
+        m.homeTeamName = homeTeamName;
+        m.homeTeamLogo = homeTeamLogo;
+        m.awayTeamName = awayTeamName;
+        m.awayTeamLogo = awayTeamLogo;
+        m.groupName = groupName;
+        return m;
+    }
+
+    /** 스케줄러: 결과만 갱신 */
     public void updateResult(String statusShort, String statusLong, Integer elapsed,
                              Integer homeGoals, Integer awayGoals) {
         this.statusShort = statusShort;
@@ -114,5 +145,27 @@ public class Match {
         this.elapsed = elapsed;
         this.homeGoals = homeGoals;
         this.awayGoals = awayGoals;
+    }
+
+    /** 관리자: 모든 필드 수정 */
+    public void updateDetails(String round, LocalDateTime matchDate,
+                              String venueName, String venueCity,
+                              String statusShort, String statusLong,
+                              String homeTeamName, String homeTeamLogo, Integer homeGoals,
+                              String awayTeamName, String awayTeamLogo, Integer awayGoals,
+                              String groupName) {
+        this.round = round;
+        this.matchDate = matchDate;
+        this.venueName = venueName;
+        this.venueCity = venueCity;
+        this.statusShort = statusShort;
+        this.statusLong = statusLong;
+        this.homeTeamName = homeTeamName;
+        this.homeTeamLogo = homeTeamLogo;
+        this.homeGoals = homeGoals;
+        this.awayTeamName = awayTeamName;
+        this.awayTeamLogo = awayTeamLogo;
+        this.awayGoals = awayGoals;
+        this.groupName = groupName;
     }
 }

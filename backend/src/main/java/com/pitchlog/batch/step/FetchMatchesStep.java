@@ -82,11 +82,10 @@ public class FetchMatchesStep {
         var status  = fixture.status();
         var venue   = fixture.venue();
 
-        // ISO 8601 날짜 파싱
-        java.time.LocalDateTime matchDate = null;
-        if (fixture.date() != null) {
-            matchDate = OffsetDateTime.parse(fixture.date()).toLocalDateTime();
-        }
+        // ISO 8601 날짜 파싱 (effectively final — 람다 캡처 가능)
+        final java.time.LocalDateTime matchDate = fixture.date() != null
+                ? OffsetDateTime.parse(fixture.date()).toLocalDateTime()
+                : null;
 
         // round에서 groupName 추출: "Group Stage - 1" → group은 별도 없음, DB에 round 그대로 저장
         // groupName은 country.groupName과 매핑하거나 null 처리
