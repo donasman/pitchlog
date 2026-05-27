@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 220 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+    /* FIFA Gold */
+    --primary: 51 100% 50%;
+    --primary-foreground: 220 20% 5%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 20% 10%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 10% 46%;
+    --accent: 51 100% 50%;
+    --accent-foreground: 220 20% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 88%;
+    --input: 220 13% 88%;
+    --ring: 51 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 40% 9%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 40% 9%;
+    --popover-foreground: 210 40% 96%;
+    /* FIFA Gold — 다크에서도 동일 */
+    --primary: 51 100% 50%;
+    --primary-foreground: 220 20% 5%;
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 222 30% 14%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 51 100% 50%;
+    --accent-foreground: 220 20% 5%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 222 30% 16%;
+    --input: 222 30% 16%;
+    --ring: 51 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* FIFA Gold 그라데이션 유틸리티 */
+@layer utilities {
+  .text-gold-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  }
+  .bg-gold-gradient {
+    background-image: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  }
+}
