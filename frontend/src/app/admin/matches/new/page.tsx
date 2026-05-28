@@ -12,7 +12,7 @@ export default function NewMatchPage() {
   const [loadingCountries, setLoadingCountries] = useState(true)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/countries`)
+    fetch(`${API_BASE}/api/countries`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => setCountries(data))
       .catch(() => setCountries([]))
@@ -22,18 +22,16 @@ export default function NewMatchPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
+        <Link href="/admin"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          관리 목록으로
+          관리자로 돌아가기
         </Link>
         <h1 className="text-2xl font-extrabold tracking-tight">경기 추가</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          국가명을 검색해서 선택하거나, 직접 입력할 수 있습니다.
+          국가 이름을 검색하거나 직접 입력하세요.
         </p>
       </div>
 
