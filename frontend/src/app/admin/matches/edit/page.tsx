@@ -19,16 +19,15 @@ function EditMatchContent() {
 
   useEffect(() => {
     if (!fixtureId) { setError('잘못된 경기 ID입니다.'); setLoading(false); return }
-
     Promise.all([
-      fetch(`${API_BASE}/api/countries`).then((r) => r.json()),
-      fetch(`${API_BASE}/api/matches/${fixtureId}`).then((r) => {
-        if (!r.ok) throw new Error('Match not found')
+      fetch(`${API_BASE}/api/countries`, { cache: 'no-store' }).then((r) => r.json()),
+      fetch(`${API_BASE}/api/admin/matches/${fixtureId}`, { cache: 'no-store' }).then((r) => {
+        if (!r.ok) throw new Error('경기를 찾을 수 없습니다.')
         return r.json()
       }),
     ])
       .then(([c, m]) => { setCountries(c); setMatch(m) })
-      .catch(() => setError('경기 정보를 불러오지 못했습니다.'))
+      .catch(() => setError('경기 데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
   }, [fixtureId])
 
@@ -53,19 +52,16 @@ export default function EditMatchPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
+        <Link href="/admin"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          관리 목록으로
+          관리자로 돌아가기
         </Link>
         <h1 className="text-2xl font-extrabold tracking-tight">경기 수정</h1>
         <p className="text-sm text-muted-foreground mt-1">경기 정보를 수정합니다.</p>
       </div>
-
       <Suspense fallback={
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (

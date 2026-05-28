@@ -21,6 +21,12 @@ public class AdminMatchController {
 
     private final AdminMatchService adminMatchService;
 
+    /** GET /api/admin/matches/{fixtureId} — 단일 경기 조회 (편집 폼용) */
+    @GetMapping("/{fixtureId}")
+    public MatchSummaryResponse getMatch(@PathVariable Integer fixtureId) {
+        return adminMatchService.getMatch(fixtureId);
+    }
+
     /** POST /api/admin/matches — 경기 생성 */
     @PostMapping
     public ResponseEntity<MatchSummaryResponse> createMatch(@RequestBody AdminMatchRequest req) {

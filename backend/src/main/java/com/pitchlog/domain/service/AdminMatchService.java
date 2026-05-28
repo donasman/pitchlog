@@ -19,6 +19,14 @@ public class AdminMatchService {
     private final MatchRepository matchRepository;
     private final MatchLineupEntryRepository lineupEntryRepository;
 
+    /** 단일 경기 조회 (편집 폼용) */
+    @Transactional(readOnly = true)
+    public MatchSummaryResponse getMatch(Integer fixtureId) {
+        Match match = matchRepository.findByFixtureId(fixtureId)
+                .orElseThrow(() -> new IllegalArgumentException("Match not found: " + fixtureId));
+        return MatchSummaryResponse.from(match, lineupEntryRepository.existsByFixtureId(fixtureId));
+    }
+
     /** 경기 생성 — fixtureId를 1_000_000+ 범위에서 사전 생성 (DB NOT NULL 제약 충족) */
     @Transactional
     public MatchSummaryResponse createMatch(AdminMatchRequest req) {
