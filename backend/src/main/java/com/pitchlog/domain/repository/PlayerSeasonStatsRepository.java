@@ -14,8 +14,9 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
             Long playerId, Integer teamApiId, Integer leagueApiId, Integer seasonYear);
 
     /**
-     * 월드컵 최종 엔트리(squad_entries.active = true)에 포함된 선수만
-     * 득점 순으로 정렬하여 반환합니다.
+     * 월드컵 최종 엔트리(squad_entries.active = true)에 포함된 선수의
+     * 전체 시즌 통계를 반환합니다. (선수별 여러 행 포함)
+     * 랭킹 집계는 PlayerService 에서 처리합니다.
      */
     @Query("""
            SELECT s FROM PlayerSeasonStats s
@@ -24,24 +25,8 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
                SELECT 1 FROM SquadEntry se
                WHERE se.player = p AND se.active = true
            )
-           ORDER BY s.goals DESC NULLS LAST
            """)
-    List<PlayerSeasonStats> findTopScorers();
-
-    /**
-     * 월드컵 최종 엔트리(squad_entries.active = true)에 포함된 선수만
-     * 도움 순으로 정렬하여 반환합니다.
-     */
-    @Query("""
-           SELECT s FROM PlayerSeasonStats s
-           JOIN FETCH s.player p
-           WHERE EXISTS (
-               SELECT 1 FROM SquadEntry se
-               WHERE se.player = p AND se.active = true
-           )
-           ORDER BY s.assists DESC NULLS LAST
-           """)
-    List<PlayerSeasonStats> findTopAssisters();
+    List<PlayerSeasonStats> findAllByActivePlayers();
 
     @Query("SELECT s FROM PlayerSeasonStats s WHERE s.player.id = :playerId " +
            "ORDER BY s.seasonYear DESC")

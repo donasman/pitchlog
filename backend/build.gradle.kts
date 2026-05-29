@@ -52,6 +52,14 @@ dependencies {
     // HTTP Client (for batch API calls)
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
+    // Auth — BCrypt (Spring Security Crypto, 경량)
+    implementation("org.springframework.security:spring-security-crypto")
+
+    // Auth — JWT
+    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.batch:spring-batch-test")

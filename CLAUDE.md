@@ -160,10 +160,10 @@ API-Football API 키는 반드시 `application-secret.yml` 에만 저장
 | 주차 | 내용 | 상태 |
 |---|---|---|
 | 1주차 | DB 스키마/ERD 설계 | ✅ 완료 |
-| 2주차 | Spring Batch 파이프라인 구현 | 🔄 진행 중 |
-| 3주차 | Next.js 프론트엔드 UI + REST API 연동 | ⏳ 예정 |
-| 4주차 | 최종 엔트리 동기화, 데이터 정제 및 테스트 | ⏳ 예정 |
-| 5주차 | Railway + Cloudflare Pages 배포 및 서비스 오픈 | ⏳ 예정 |
+| 2주차 | Spring Batch 파이프라인 구현 | ✅ 완료 |
+| 3주차 | Next.js 프론트엔드 UI + REST API 연동 | ✅ 완료 |
+| 4주차 | 최종 엔트리 동기화, 데이터 정제, 테스트, SEO, 라인업 UI, 어드민 인증 | ✅ 완료 |
+| 5주차 | Railway + Cloudflare Pages 배포 준비 완료 → 실배포 대기 | 🔄 진행 중 |
 
 ---
 

@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -23,6 +24,12 @@ public class GlobalExceptionHandler {
                 "message", e.getMessage(),
                 "timestamp", LocalDateTime.now().toString()
         ));
+    }
+
+    /** 정적 리소스 없음 (favicon.ico 등) → 404, 로그 없이 처리 */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Void> handleNoResource(NoResourceFoundException e) {
+        return ResponseEntity.notFound().build();
     }
 
     /** 그 외 예상치 못한 서버 에러 → 500 */

@@ -54,9 +54,11 @@ public record MatchDetailResponse(
                     List<MatchLineupEntry> all = e.getValue();
                     String formation = all.stream()
                             .map(MatchLineupEntry::getFormation)
+                            .filter(java.util.Objects::nonNull)
                             .findFirst().orElse(null);
                     String teamName = all.stream()
                             .map(MatchLineupEntry::getTeamName)
+                            .filter(java.util.Objects::nonNull)
                             .findFirst().orElse(null);
 
                     List<LineupPlayer> startXI = all.stream()

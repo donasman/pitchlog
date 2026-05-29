@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { MatchSummary } from '@/types'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+import { fetchMe, adminFetch, logout, type AdminUser } from '@/lib/adminAuth'
 
 function formatDate(iso: string | null) {
   if (!iso) return 'TBD'
@@ -13,30 +13,53 @@ function formatDate(iso: string | null) {
 }
 
 export default function AdminPage() {
-  const [matches, setMatches] = useState<MatchSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const [admin, setAdmin]       = useState<AdminUser | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [matches, setMatches]   = useState<MatchSummary[]>([])
+  const [loading, setLoading]   = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]       = useState<string | null>(null)
 
+  // ── 인증 확인 ──────────────────────────────────────────────────
+  useEffect(() => {
+    fetchMe().then((user) => {
+      if (!user) {
+        router.replace('/admin/login')
+      } else {
+        setAdmin(user)
+        setAuthChecked(true)
+      }
+    })
+  }, [router])
+
+  // ── 경기 목록 로드 ─────────────────────────────────────────────
   const loadMatches = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/matches`, { cache: 'no-store' })
+      // 경기 목록은 공개 API
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'}/api/matches`,
+        { cache: 'no-store' },
+      )
       if (!res.ok) throw new Error('불러오기 실패')
       setMatches(await res.json())
     } catch {
-      setError('경기 목록을 불러오지 못했습니다. 백엔드 서버를 확인해주세요.')
+      setError('경기 목록을 불러오지 못했습니다.')
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { loadMatches() }, [loadMatches])
+  useEffect(() => {
+    if (authChecked) loadMatches()
+  }, [authChecked, loadMatches])
 
+  // ── 경기 삭제 ──────────────────────────────────────────────────
   const handleDelete = async (fixtureId: number) => {
     if (!confirm('이 경기를 삭제하시겠습니까?')) return
     setDeleting(fixtureId)
     try {
-      const res = await fetch(`${API_BASE}/api/admin/matches/${fixtureId}`, { method: 'DELETE' })
+      const res = await adminFetch(`/api/admin/matches/${fixtureId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('삭제 실패')
       setMatches((prev) => prev.filter((m) => m.fixtureId !== fixtureId))
     } catch {
@@ -44,6 +67,21 @@ export default function AdminPage() {
     } finally {
       setDeleting(null)
     }
+  }
+
+  // ── 로그아웃 ───────────────────────────────────────────────────
+  const handleLogout = () => {
+    logout()
+    router.replace('/admin/login')
+  }
+
+  // 인증 확인 전 로딩
+  if (!authChecked) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   const roundOrder: string[] = []
@@ -56,17 +94,37 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8 max-w-5xl">
+      {/* 헤더 */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-0.5">Admin</p>
           <h1 className="text-2xl font-extrabold tracking-tight">경기 관리</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{matches.length}개 경기 등록됨</p>
         </div>
-        <Link href="/admin/matches/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
-          <span className="text-lg leading-none">+</span>
-          경기 추가
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/matches/new"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
+            <span className="text-lg leading-none">+</span>
+            경기 추가
+          </Link>
+        </div>
+      </div>
+
+      {/* 어드민 정보 + 로그아웃 */}
+      <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2.5 text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <span className="w-2 h-2 rounded-full bg-green-400" />
+          <span className="font-medium text-foreground">{admin?.username}</span>
+          <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold">
+            {admin?.role}
+          </span>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          로그아웃
+        </button>
       </div>
 
       <div className="flex gap-4 text-sm">
@@ -123,7 +181,7 @@ export default function AdminPage() {
                     <td className="py-3 pl-4 pr-2 text-xs text-muted-foreground">{formatDate(m.matchDate)}</td>
                     <td className="py-3 pr-3">
                       <div className="flex items-center gap-2">
-                        {m.home.logo && <img src={m.home.logo} alt="" className="w-5 h-4 object-cover rounded-sm" />} {/* eslint-disable-line @next/next/no-img-element */}
+                        {m.home.logo && <img src={m.home.logo} alt="" className="w-5 h-4 object-cover rounded-sm" />}{/* eslint-disable-line @next/next/no-img-element */}
                         <span className="font-medium truncate max-w-[100px]">{m.home.name ?? '-'}</span>
                       </div>
                     </td>
@@ -134,7 +192,7 @@ export default function AdminPage() {
                     </td>
                     <td className="py-3 pr-3">
                       <div className="flex items-center gap-2">
-                        {m.away.logo && <img src={m.away.logo} alt="" className="w-5 h-4 object-cover rounded-sm" />} {/* eslint-disable-line @next/next/no-img-element */}
+                        {m.away.logo && <img src={m.away.logo} alt="" className="w-5 h-4 object-cover rounded-sm" />}{/* eslint-disable-line @next/next/no-img-element */}
                         <span className="font-medium truncate max-w-[100px]">{m.away.name ?? '-'}</span>
                       </div>
                     </td>
@@ -160,12 +218,6 @@ export default function AdminPage() {
           </div>
         </section>
       ))}
-
-      <div className="rounded-lg border border-border/50 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-        &#x26A0;&#xFE0F; 현재 인증 없이 접근 가능합니다 (개발 모드).{' '}
-        <code className="bg-muted px-1 py-0.5 rounded">admin.token</code>을{' '}
-        <code className="bg-muted px-1 py-0.5 rounded">application.yml</code>에 설정하면 프로덕션 배포 시 보호됩니다.
-      </div>
     </div>
   )
 }

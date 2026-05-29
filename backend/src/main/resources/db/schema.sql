@@ -57,6 +57,19 @@ CREATE TABLE IF NOT EXISTS squad_entries (
     CONSTRAINT uq_squad_entries UNIQUE (player_id, country_id)
 );
 
+-- ── 어드민 계정 ────────────────────────────────────────────────────
+-- role: ADMIN (일반 관리자) | SUPER_ADMIN (최고 관리자, 추후 확장)
+CREATE TABLE IF NOT EXISTS admin_users (
+    id            BIGSERIAL    PRIMARY KEY,
+    username      VARCHAR(50)  NOT NULL,
+    password_hash VARCHAR(100) NOT NULL,   -- BCrypt 해시
+    role          VARCHAR(30)  NOT NULL DEFAULT 'ADMIN',
+    enabled       BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_admin_users_username UNIQUE (username)
+);
+
 -- Spring Batch 메타데이터 테이블은 spring.batch.jdbc.initialize-schema=always 로 자동 생성
 
 -- 인덱스

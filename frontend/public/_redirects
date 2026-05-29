@@ -1,0 +1,5 @@
+# Cloudflare Pages — output: export 정적 빌드용 SPA 라우팅
+# Next.js trailingSlash: true 이므로 /path → /path/ 리다이렉트
+/admin    /admin/    301
+/squads   /squads/   301
+/matches  /matches/  301

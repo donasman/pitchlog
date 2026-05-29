@@ -38,19 +38,30 @@ public class MatchService {
                 .toList();
     }
 
-    /** 경기 상세 + 라인업 */
+    /**
+     * 경기 상세 + 라인업.
+     * 라인업 조회는 별도 트랜잭션으로 분리해 실패 시 경기 정보만 반환.
+     */
     public MatchDetailResponse getMatch(Integer fixtureId) {
         Match match = matchRepository.findByFixtureId(fixtureId)
                 .orElseThrow(() -> new IllegalArgumentException("Match not found: " + fixtureId));
 
-        List<MatchLineupEntry> entries = List.of();
+        List<MatchLineupEntry> entries = fetchLineupsSafely(fixtureId);
+        return MatchDetailResponse.from(match, entries);
+    }
+
+    /**
+     * 라인업 조회 실패 시 빈 리스트 반환.
+     * @Transactional 경계 밖에서 예외를 처리해 상위 트랜잭션 오염 방지.
+     */
+    @Transactional(readOnly = true, noRollbackFor = Exception.class)
+    public List<MatchLineupEntry> fetchLineupsSafely(Integer fixtureId) {
         try {
-            entries = lineupEntryRepository
+            return lineupEntryRepository
                     .findByFixtureIdOrderByTeamApiIdAscSubstituteAscGridAsc(fixtureId);
         } catch (Exception e) {
-            log.warn("라인업 조회 실패 (fixtureId={}): {}", fixtureId, e.getMessage());
+            log.warn("라인업 조회 실패 (fixtureId={}) — 빈 리스트 반환: {}", fixtureId, e.getMessage());
+            return List.of();
         }
-
-        return MatchDetailResponse.from(match, entries);
     }
 }

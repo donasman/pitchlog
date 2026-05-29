@@ -4,8 +4,15 @@ import { api } from '@/lib/api'
 import type { Country } from '@/types'
 
 export const metadata: Metadata = {
-  title: '2026 월드컵 전체 스쿼드',
-  description: '2026 FIFA 월드컵 32개 참가국 스쿼드 정보를 확인하세요.',
+  title: '2026 월드컵 전체 스쿼드 — 32개국 참가국 명단',
+  description: '2026 FIFA 월드컵 32개 참가국 최종 스쿼드 명단을 확인하세요. 포지션별 선수 정보 제공.',
+  alternates: { canonical: 'https://pitchlog.com/squads' },
+  openGraph: {
+    title: '2026 월드컵 전체 스쿼드 | PitchLog',
+    description: '2026 FIFA 월드컵 32개 참가국 최종 스쿼드 명단을 확인하세요.',
+    url: 'https://pitchlog.com/squads',
+    type: 'website',
+  },
 }
 
 export default async function SquadsPage() {

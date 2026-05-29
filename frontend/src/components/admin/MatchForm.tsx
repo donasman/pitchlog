@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Country, MatchSummary } from '@/types'
 import CountrySearchInput from './CountrySearchInput'
+import { adminFetch } from '@/lib/adminAuth'
 
 const ROUNDS = [
   'Group Stage - 1', 'Group Stage - 2', 'Group Stage - 3',
@@ -86,12 +87,11 @@ export default function MatchForm({ countries, initial, fixtureId }: Props) {
     }
 
     try {
-      const url = isEdit
-        ? `${apiBase}/api/admin/matches/${fixtureId}`
-        : `${apiBase}/api/admin/matches`
-      const res = await fetch(url, {
+      const path = isEdit
+        ? `/api/admin/matches/${fixtureId}`
+        : `/api/admin/matches`
+      const res = await adminFetch(path, {
         method: isEdit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error(`API Error ${res.status}`)

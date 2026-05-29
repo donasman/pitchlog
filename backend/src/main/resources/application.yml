@@ -37,6 +37,12 @@ api-football:
   base-url: https://v3.football.api-sports.io
   api-key: ${API_FOOTBALL_KEY:}
 
+# 어드민 인증 (JWT)
+admin:
+  jwt:
+    secret: ${ADMIN_JWT_SECRET:pitchlog-dev-secret-key-must-change-in-prod}
+    expiry-hours: 24
+
 logging:
   level:
     com.pitchlog: DEBUG

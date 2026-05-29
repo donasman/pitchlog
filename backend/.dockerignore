@@ -1,0 +1,7 @@
+.gradle
+build
+.claude
+*.local.yml
+*-secret.yml
+*.env
+.git

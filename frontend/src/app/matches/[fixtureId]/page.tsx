@@ -78,8 +78,13 @@ export default async function MatchDetailPage({ params }: Props) {
   const matchDate = match.matchDate ? new Date(match.matchDate) : null
 
   // 홈/어웨이팀 라인업 분리
-  const homeLineup = match.lineups.find((l) => l.teamApiId === match!.home.teamApiId)
-  const awayLineup = match.lineups.find((l) => l.teamApiId === match!.away.teamApiId)
+  // teamApiId 일치 우선, 없으면 순서대로 할당 (수동 입력 경기 대응)
+  const homeLineup =
+    match.lineups.find((l) => l.teamApiId === match!.home.teamApiId) ??
+    match.lineups[0]
+  const awayLineup =
+    match.lineups.find((l) => l.teamApiId === match!.away.teamApiId) ??
+    match.lineups[1]
   const hasLineup = !!(homeLineup?.startXI.length && awayLineup?.startXI.length)
 
   return (

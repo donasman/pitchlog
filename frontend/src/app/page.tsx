@@ -6,6 +6,13 @@ import type { Country } from '@/types'
 export const metadata: Metadata = {
   title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
   description: '2026 FIFA 월드컵 32개국 선수 정보, 스쿼드, 득점·도움 순위를 한눈에 확인하세요.',
+  alternates: { canonical: 'https://pitchlog.com' },
+  openGraph: {
+    title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
+    description: '2026 FIFA 월드컵 32개국 선수 정보, 스쿼드, 득점·도움 순위를 한눈에 확인하세요.',
+    url: 'https://pitchlog.com',
+    type: 'website',
+  },
 }
 
 export default async function HomePage() {
