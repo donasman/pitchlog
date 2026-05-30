@@ -1,17 +1,25 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Space_Grotesk, Space_Mono } from 'next/font/google'
 import './globals.css'
-import { ThemeProvider } from '@/components/theme-provider'
-import { ThemeToggle } from '@/components/theme-toggle'
+import Link from 'next/link'
 
-const inter = Inter({ subsets: ['latin'] })
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-display',
+})
+const spaceMono = Space_Mono({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-mono',
+})
 
 export const metadata: Metadata = {
   title: {
-    default: 'PitchLog - 2026 FIFA 월드컵 선수 통계',
+    default: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
     template: '%s | PitchLog',
   },
-  description: '2026 FIFA 월드컵 스쿼드, 선수 통계, 득점 순위 및 도움 순위.',
+  description: '48개국 736명의 선수, 실시간 경기 스코어와 심층 통계. PitchLog가 2026 월드컵의 모든 순간을 데이터로 추적합니다.',
   metadataBase: new URL('https://pitchlog.com'),
   openGraph: {
     siteName: 'PitchLog',
@@ -20,51 +28,168 @@ export const metadata: Metadata = {
   },
 }
 
+const TICKER_ITEMS = [
+  { type: 'match', flag: 'mx', home: 'MEX', score: '2 – 1', away: 'NOR', time: "67'", live: true },
+  { type: 'match', flag: 'fr', home: 'FRA', score: '1 – 1', away: 'JPN', time: "53'", live: true },
+  { type: 'stat', label: '득점왕', player: 'Mbappé', stat: '6골' },
+  { type: 'match', flag: 'ar', home: 'ARG', score: '3 – 0', away: 'AUS', time: 'FT', live: false },
+  { type: 'stat', label: '도움왕', player: 'Messi', stat: '5 어시스트' },
+  { type: 'match', flag: 'pt', home: 'POR', score: '2 – 1', away: 'DEN', time: 'FT', live: false },
+  { type: 'stat', label: 'Next', player: 'ESP vs COL', stat: '21:00 KST' },
+] as const
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
-          <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-            <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-              <a href="/" className="flex items-center gap-2 font-extrabold text-xl tracking-tight">
-                <span className="text-primary">&#x26BD;</span>
-                <span>Pitch<span className="text-primary">Log</span></span>
-              </a>
-
-              <nav className="hidden sm:flex items-center gap-1 text-sm font-medium">
-                <a href="/matches" className="px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                  경기 일정
-                </a>
-                <a href="/squads" className="px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                  스쿼드
-                </a>
-                <a href="/stats/top-scorers" className="px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                  득점 순위
-                </a>
-                <a href="/stats/top-assists" className="px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                  도움 순위
-                </a>
-                <a href="/admin" className="px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground text-xs border border-border/50 ml-2">
-                  &#x2699;&#xFE0F; 관리
-                </a>
-              </nav>
-
-              <ThemeToggle />
+    <html lang="ko">
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+        />
+      </head>
+      <body
+        className={`${spaceGrotesk.variable} ${spaceMono.variable}`}
+        style={{ fontFamily: "Pretendard, 'Space Grotesk', sans-serif" }}
+      >
+        {/* ── Topbar ─────────────────────────────────── */}
+        <div className="topbar">
+          {/* Live Ticker */}
+          <div className="ticker">
+            <span className="ticker-label">
+              <span className="dot" />
+              Live
+            </span>
+            <div className="ticker-track">
+              {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+                item.type === 'stat' ? (
+                  <span key={i} className="tk">
+                    <b>{item.label}</b> {item.player} <span className="sc">{item.stat}</span>
+                  </span>
+                ) : (
+                  <span key={i} className="tk">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`https://flagcdn.com/w80/${item.flag}.png`} alt="" width={18} height={13} style={{ objectFit: 'cover', borderRadius: 2 }} />
+                    <b>{item.home}</b>
+                    <span className="sc">{item.score}</span>
+                    <b>{item.away}</b>
+                    {item.live
+                      ? <span className="min">{item.time}</span>
+                      : <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'var(--ink-3)' }}>{item.time}</span>
+                    }
+                  </span>
+                )
+              ))}
             </div>
-          </header>
+          </div>
 
-          <main className="max-w-7xl mx-auto px-4 py-8">
-            {children}
-          </main>
+          {/* Nav */}
+          <div className="wrap">
+            <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
+              <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                <span className="brand-mark">
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2 4 6v6c0 4.5 3.4 7.8 8 10 4.6-2.2 8-5.5 8-10V6l-8-4Z" fill="currentColor"/>
+                    <path d="M12 7.5 9.6 13l2.4 1.8L14.4 13 12 7.5Z" fill="#F5C518"/>
+                  </svg>
+                </span>
+                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 20, letterSpacing: '-0.01em' }}>
+                  Pitch<span style={{ color: 'var(--gold)' }}>Log</span>
+                </span>
+              </Link>
 
-          <footer className="border-t border-border mt-16">
-            <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground">
-              <span>&#xa9; 2026 PitchLog</span>
-              <span>데이터 제공: API-Football</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {[
+                  { href: '/matches', label: '라이브' },
+                  { href: '/squads', label: '참가국' },
+                  { href: '/stats/top-scorers', label: '통계' },
+                  { href: '/stats/top-scorers', label: '선수 비교' },
+                  { href: '/squads', label: '팀 랭킹' },
+                ].map(({ href, label }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    style={{
+                      padding: '8px 14px', fontSize: 14, fontWeight: 500,
+                      color: 'var(--ink-2)', borderRadius: 8,
+                      transition: 'color 0.15s', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'var(--surface)', border: '1px solid var(--line)',
+                  borderRadius: 9, padding: '8px 12px',
+                  color: 'var(--ink-3)', fontSize: 13, width: 190,
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+                  </svg>
+                  <span>선수·국가 검색</span>
+                </div>
+                <Link href="/admin" className="btn btn-gold">로그인</Link>
+              </div>
+            </nav>
+          </div>
+        </div>
+
+        {/* ── Page Content ───────────────────────────── */}
+        {children}
+
+        {/* ── Footer ─────────────────────────────────── */}
+        <footer className="site-footer">
+          <div className="wrap">
+            <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: 36, marginBottom: 44 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                  <span className="brand-mark">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2 4 6v6c0 4.5 3.4 7.8 8 10 4.6-2.2 8-5.5 8-10V6l-8-4Z" fill="currentColor"/>
+                      <path d="M12 7.5 9.6 13l2.4 1.8L14.4 13 12 7.5Z" fill="#F5C518"/>
+                    </svg>
+                  </span>
+                  <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18 }}>
+                    Pitch<span style={{ color: 'var(--gold)' }}>Log</span>
+                  </span>
+                </div>
+                <p style={{ color: 'var(--ink-3)', fontSize: 13.5, maxWidth: 280 }}>
+                  2026 FIFA 월드컵 선수 통계 플랫폼. 48개국 736명의 선수 데이터를 실시간으로 추적합니다.
+                </p>
+              </div>
+              <div className="foot-col">
+                <h4>서비스</h4>
+                <Link href="/matches">라이브 경기</Link>
+                <Link href="/squads">참가국 스쿼드</Link>
+                <Link href="/stats/top-scorers">득점 순위</Link>
+                <Link href="/stats/top-assists">도움 순위</Link>
+              </div>
+              <div className="foot-col">
+                <h4>정보</h4>
+                <Link href="/">소개</Link>
+                <Link href="/">데이터 출처</Link>
+                <Link href="/">개인정보처리방침</Link>
+              </div>
+              <div className="foot-col">
+                <h4>관리</h4>
+                <Link href="/admin">어드민 로그인</Link>
+                <Link href="/admin/matches">경기 관리</Link>
+              </div>
             </div>
-          </footer>
-        </ThemeProvider>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              paddingTop: 26, borderTop: '1px solid var(--line)',
+            }}>
+              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'var(--ink-3)' }}>
+                © 2026 PitchLog · 데이터 제공: API-Football
+              </span>
+            </div>
+          </div>
+        </footer>
       </body>
     </html>
   )
