@@ -57,6 +57,44 @@ CREATE TABLE IF NOT EXISTS squad_entries (
     CONSTRAINT uq_squad_entries UNIQUE (player_id, country_id)
 );
 
+CREATE TABLE IF NOT EXISTS matches (
+    id                  BIGSERIAL PRIMARY KEY,
+    fixture_id          INTEGER      UNIQUE,
+    round               VARCHAR(100),
+    match_date          TIMESTAMP,
+    venue_name          VARCHAR(100),
+    venue_city          VARCHAR(100),
+    status_short        VARCHAR(10),
+    status_long         VARCHAR(50),
+    elapsed             INTEGER,
+    home_team_api_id    INTEGER,
+    home_team_name      VARCHAR(100),
+    home_team_logo      VARCHAR(500),
+    home_goals          INTEGER,
+    away_team_api_id    INTEGER,
+    away_team_name      VARCHAR(100),
+    away_team_logo      VARCHAR(500),
+    away_goals          INTEGER,
+    group_name          VARCHAR(50),
+    updated_at          TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS match_lineup_entries (
+    id              BIGSERIAL PRIMARY KEY,
+    fixture_id      INTEGER      NOT NULL,
+    team_api_id     INTEGER      NOT NULL,
+    team_name       VARCHAR(100),
+    formation       VARCHAR(20),
+    player_api_id   INTEGER      NOT NULL,
+    player_name     VARCHAR(100),
+    player_number   INTEGER,
+    pos             VARCHAR(3),
+    grid            VARCHAR(10),
+    is_substitute   BOOLEAN      NOT NULL DEFAULT FALSE,
+    updated_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_match_lineup UNIQUE (fixture_id, player_api_id, team_api_id)
+);
+
 -- ── 어드민 계정 ────────────────────────────────────────────────────
 -- role: ADMIN (일반 관리자) | SUPER_ADMIN (최고 관리자, 추후 확장)
 CREATE TABLE IF NOT EXISTS admin_users (
@@ -77,3 +115,5 @@ CREATE INDEX IF NOT EXISTS idx_squad_entries_country ON squad_entries(country_id
 CREATE INDEX IF NOT EXISTS idx_player_season_stats_player ON player_season_stats(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_season_stats_goals ON player_season_stats(goals DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS idx_player_season_stats_assists ON player_season_stats(assists DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_matches_match_date ON matches(match_date);
+CREATE INDEX IF NOT EXISTS idx_match_lineup_fixture ON match_lineup_entries(fixture_id);
