@@ -62,7 +62,7 @@ function computePositions(
     list.push(item)
     byRow.set(item.g.row, list)
   }
-  for (const list of byRow.values()) {
+  for (const list of Array.from(byRow.values())) {
     list.sort((a, b) => a.g.col - b.g.col)
   }
 
