@@ -4,6 +4,8 @@ import { api } from '@/lib/api'
 import type { MatchDetail } from '@/types'
 import PitchFormation from '@/components/match/PitchFormation'
 
+export const dynamicParams = false
+
 interface Props {
   params: { fixtureId: string }
 }
@@ -88,7 +90,7 @@ export default async function MatchDetailPage({ params }: Props) {
   const hasLineup = !!(homeLineup?.startXI.length && awayLineup?.startXI.length)
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="wrap space-y-8 py-8 max-w-3xl mx-auto">
       {/* 뒤로가기 */}
       <Link
         href="/matches"

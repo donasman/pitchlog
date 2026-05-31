@@ -4,6 +4,8 @@ import { api } from '@/lib/api'
 import { positionLabel, playerSlug, formatBirthDate } from '@/lib/utils'
 import type { SquadResponse } from '@/types'
 
+export const dynamicParams = false
+
 interface Props {
   params: { country: string }
 }
@@ -69,7 +71,7 @@ export default async function CountrySquadPage({ params }: Props) {
   }, {})
 
   return (
-    <div className="space-y-10">
+    <div className="wrap space-y-10 py-8">
       <Link
         href="/squads"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

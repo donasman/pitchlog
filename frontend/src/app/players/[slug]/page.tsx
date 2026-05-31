@@ -4,6 +4,8 @@ import { api } from '@/lib/api'
 import { formatBirthDate, playerSlug } from '@/lib/utils'
 import type { PlayerDetail } from '@/types'
 
+export const dynamicParams = false
+
 interface Props {
   params: { slug: string }
 }
@@ -70,7 +72,7 @@ export default async function PlayerDetailPage({ params }: Props) {
   if (!player) return <NotFound />
 
   return (
-    <div className="space-y-10 max-w-3xl">
+    <div className="wrap space-y-10 py-8 max-w-3xl mx-auto">
       <Link
         href="/squads"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
