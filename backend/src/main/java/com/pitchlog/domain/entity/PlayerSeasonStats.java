@@ -46,10 +46,19 @@ public class PlayerSeasonStats {
     private Integer appearances;
 
     @Column
+    private Integer lineups;        // 선발 횟수
+
+    @Column
+    private Integer minutes;        // 총 출전 분수
+
+    @Column
     private Integer goals;
 
     @Column
     private Integer assists;
+
+    @Column
+    private Integer saves;          // 선방 수 (GK)
 
     @Column(name = "yellow_cards")
     private Integer yellowCards;
@@ -59,6 +68,48 @@ public class PlayerSeasonStats {
 
     @Column
     private Double rating;
+
+    // 패스
+    @Column(name = "passes_total")
+    private Integer passesTotal;
+
+    @Column(name = "passes_accuracy")
+    private Integer passesAccuracy; // 정수 퍼센트
+
+    // 슈팅
+    @Column(name = "shots_total")
+    private Integer shotsTotal;
+
+    @Column(name = "shots_on")
+    private Integer shotsOn;        // 유효 슈팅
+
+    // 드리블
+    @Column(name = "dribbles_attempts")
+    private Integer dribblesAttempts;
+
+    @Column(name = "dribbles_success")
+    private Integer dribblesSuccess;
+
+    // 수비
+    @Column(name = "tackles_total")
+    private Integer tacklesTotal;
+
+    @Column
+    private Integer interceptions;
+
+    // 듀얼
+    @Column(name = "duels_total")
+    private Integer duelsTotal;
+
+    @Column(name = "duels_won")
+    private Integer duelsWon;
+
+    // 파울
+    @Column(name = "fouls_committed")
+    private Integer foulsCommitted;
+
+    @Column(name = "fouls_drawn")
+    private Integer foulsDrawn;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
@@ -77,13 +128,40 @@ public class PlayerSeasonStats {
         return stats;
     }
 
-    public void updateStats(Integer appearances, Integer goals, Integer assists,
-                            Integer yellowCards, Integer redCards, Double rating) {
-        this.appearances = appearances;
-        this.goals = goals;
-        this.assists = assists;
-        this.yellowCards = yellowCards;
-        this.redCards = redCards;
-        this.rating = rating;
+    /** 통계 값 묶음 — FetchPlayerStatsStep에서 값 전달 시 사용 */
+    public record StatsValues(
+            Integer appearances, Integer lineups, Integer minutes,
+            Integer goals, Integer assists, Integer saves,
+            Integer yellowCards, Integer redCards, Double rating,
+            Integer passesTotal, Integer passesAccuracy,
+            Integer shotsTotal, Integer shotsOn,
+            Integer dribblesAttempts, Integer dribblesSuccess,
+            Integer tacklesTotal, Integer interceptions,
+            Integer duelsTotal, Integer duelsWon,
+            Integer foulsCommitted, Integer foulsDrawn
+    ) {}
+
+    public void updateStats(StatsValues v) {
+        this.appearances      = v.appearances();
+        this.lineups          = v.lineups();
+        this.minutes          = v.minutes();
+        this.goals            = v.goals();
+        this.assists          = v.assists();
+        this.saves            = v.saves();
+        this.yellowCards      = v.yellowCards();
+        this.redCards         = v.redCards();
+        this.rating           = v.rating();
+        this.passesTotal      = v.passesTotal();
+        this.passesAccuracy   = v.passesAccuracy();
+        this.shotsTotal       = v.shotsTotal();
+        this.shotsOn          = v.shotsOn();
+        this.dribblesAttempts = v.dribblesAttempts();
+        this.dribblesSuccess  = v.dribblesSuccess();
+        this.tacklesTotal     = v.tacklesTotal();
+        this.interceptions    = v.interceptions();
+        this.duelsTotal       = v.duelsTotal();
+        this.duelsWon         = v.duelsWon();
+        this.foulsCommitted   = v.foulsCommitted();
+        this.foulsDrawn       = v.foulsDrawn();
     }
 }

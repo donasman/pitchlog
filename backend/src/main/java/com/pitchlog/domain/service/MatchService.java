@@ -4,6 +4,7 @@ import com.pitchlog.api.dto.MatchDetailResponse;
 import com.pitchlog.api.dto.MatchSummaryResponse;
 import com.pitchlog.domain.entity.Match;
 import com.pitchlog.domain.entity.MatchLineupEntry;
+import com.pitchlog.domain.exception.ResourceNotFoundException;
 import com.pitchlog.domain.repository.MatchLineupEntryRepository;
 import com.pitchlog.domain.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class MatchService {
      */
     public MatchDetailResponse getMatch(Integer fixtureId) {
         Match match = matchRepository.findByFixtureId(fixtureId)
-                .orElseThrow(() -> new IllegalArgumentException("Match not found: " + fixtureId));
+                .orElseThrow(() -> ResourceNotFoundException.match(fixtureId));
 
         List<MatchLineupEntry> entries = fetchLineupsSafely(fixtureId);
         return MatchDetailResponse.from(match, entries);

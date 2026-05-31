@@ -1,6 +1,7 @@
 package com.pitchlog.api.dto;
 
 import com.pitchlog.domain.entity.Player;
+import com.pitchlog.domain.repository.PlayerSeasonStatsRepository.PlayerStatsProjection;
 
 /**
  * 득점/도움 랭킹 응답 DTO.
@@ -15,7 +16,7 @@ public record StatsRankingResponse(
         int assists,
         int appearances
 ) {
-    /** 집계 결과를 직접 받아 생성 */
+    /** Player 엔티티 + 집계값으로 생성 */
     public static StatsRankingResponse of(Player player, int goals, int assists, int appearances) {
         return new StatsRankingResponse(
                 player.getId(),
@@ -25,6 +26,19 @@ public record StatsRankingResponse(
                 goals,
                 assists,
                 appearances
+        );
+    }
+
+    /** DB 집계 Projection으로 생성 */
+    public static StatsRankingResponse from(PlayerStatsProjection p) {
+        return new StatsRankingResponse(
+                p.getPlayerId(),
+                p.getPlayerName(),
+                p.getPhotoUrl(),
+                p.getNationality(),
+                p.getGoals(),
+                p.getAssists(),
+                p.getAppearances()
         );
     }
 }

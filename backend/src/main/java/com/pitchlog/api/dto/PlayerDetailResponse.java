@@ -19,26 +19,56 @@ public record PlayerDetailResponse(
 ) {
     public record SeasonStatsItem(
             Integer seasonYear,
-            String teamName,
-            String leagueName,
+            String  teamName,
+            String  leagueName,
             Integer appearances,
+            Integer lineups,
+            Integer minutes,
             Integer goals,
             Integer assists,
+            Integer saves,
             Integer yellowCards,
             Integer redCards,
-            Double rating
+            Double  rating,
+            Integer passesTotal,
+            Integer passesAccuracy,
+            Integer shotsTotal,
+            Integer shotsOn,
+            Integer dribblesAttempts,
+            Integer dribblesSuccess,
+            Integer tacklesTotal,
+            Integer interceptions,
+            Integer duelsTotal,
+            Integer duelsWon,
+            Integer foulsCommitted,
+            Integer foulsDrawn
     ) {
-        public static SeasonStatsItem from(PlayerSeasonStats stats) {
+        public static SeasonStatsItem from(PlayerSeasonStats s) {
             return new SeasonStatsItem(
-                    stats.getSeasonYear(),
-                    stats.getTeamName(),
-                    stats.getLeagueName(),
-                    stats.getAppearances(),
-                    stats.getGoals(),
-                    stats.getAssists(),
-                    stats.getYellowCards(),
-                    stats.getRedCards(),
-                    stats.getRating()
+                    s.getSeasonYear(),
+                    s.getTeamName(),
+                    s.getLeagueName(),
+                    s.getAppearances(),
+                    s.getLineups(),
+                    s.getMinutes(),
+                    s.getGoals(),
+                    s.getAssists(),
+                    s.getSaves(),
+                    s.getYellowCards(),
+                    s.getRedCards(),
+                    s.getRating(),
+                    s.getPassesTotal(),
+                    s.getPassesAccuracy(),
+                    s.getShotsTotal(),
+                    s.getShotsOn(),
+                    s.getDribblesAttempts(),
+                    s.getDribblesSuccess(),
+                    s.getTacklesTotal(),
+                    s.getInterceptions(),
+                    s.getDuelsTotal(),
+                    s.getDuelsWon(),
+                    s.getFoulsCommitted(),
+                    s.getFoulsDrawn()
             );
         }
     }

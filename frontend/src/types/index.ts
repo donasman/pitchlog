@@ -26,11 +26,26 @@ export interface SeasonStats {
   teamName: string | null
   leagueName: string | null
   appearances: number | null
+  lineups: number | null
+  minutes: number | null
   goals: number | null
   assists: number | null
+  saves: number | null
   yellowCards: number | null
   redCards: number | null
   rating: number | null
+  passesTotal: number | null
+  passesAccuracy: number | null  // 정수 퍼센트 (예: 85)
+  shotsTotal: number | null
+  shotsOn: number | null
+  dribblesAttempts: number | null
+  dribblesSuccess: number | null
+  tacklesTotal: number | null
+  interceptions: number | null
+  duelsTotal: number | null
+  duelsWon: number | null
+  foulsCommitted: number | null
+  foulsDrawn: number | null
 }
 
 export interface PlayerDetail {

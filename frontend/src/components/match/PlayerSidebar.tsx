@@ -1,43 +1,57 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { LineupPlayer } from '@/types'
+import type { LineupPlayer, SeasonStats } from '@/types'
 import RadarStatsChart, { type PlayerStats } from './RadarStatsChart'
 import { POS_COLOR, POS_LABEL } from './PlayerMarker'
 
-// ── 포지션별 모의 스탯 생성 (결정론적) ────────────────────────────
-function generateStats(player: LineupPlayer): PlayerStats {
-  const seed = (player.playerApiId ?? 0) * 2654435761 + (player.number ?? 7) * 40503
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 
-  const hash = (n: number): number => {
-    let h = seed ^ (n * 2246822519)
-    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
-    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
-    return Math.abs(h ^ (h >>> 16)) % 100
+// ── 시즌 통계 집계 → 레이더 스탯 변환 ────────────────────────────────
+// 여러 리그 통계를 합산하여 0-100 척도로 정규화
+function toRadarStats(statsList: SeasonStats[]): PlayerStats {
+  if (statsList.length === 0) return { shooting: 0, passing: 0, dribble: 0, defense: 0, physical: 0, rating: 0 }
+
+  const sum = <K extends keyof SeasonStats>(key: K): number =>
+    statsList.reduce((acc, s) => acc + ((s[key] as number | null) ?? 0), 0)
+
+  const avg = <K extends keyof SeasonStats>(key: K): number => {
+    const vals = statsList.map(s => (s[key] as number | null) ?? null).filter((v): v is number => v !== null)
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
   }
 
-  const pos = player.pos ?? 'M'
+  const shotsTotal      = sum('shotsTotal')
+  const shotsOn         = sum('shotsOn')
+  const passesAccuracy  = avg('passesAccuracy')         // 이미 퍼센트값
+  const dribblesAtt     = sum('dribblesAttempts')
+  const dribblesSucc    = sum('dribblesSuccess')
+  const tacklesTotal    = sum('tacklesTotal')
+  const interceptions   = sum('interceptions')
+  const duelsTotal      = sum('duelsTotal')
+  const duelsWon        = sum('duelsWon')
+  const ratingAvg       = avg('rating')                 // 1-10 → 0-100
 
-  // [min, max] per stat per position: [pace, shooting, passing, dribble, defense, physical]
-  const ranges: Record<string, Array<[number, number]>> = {
-    G: [[32,58], [12,38], [52,76], [34,58], [62,86], [65,88]],
-    D: [[56,78], [26,54], [60,82], [50,73], [72,92], [66,88]],
-    M: [[62,84], [55,78], [70,92], [66,88], [46,70], [55,78]],
-    F: [[72,95], [74,96], [60,83], [72,94], [26,52], [60,82]],
-  }
+  // 유효슈팅률 → shooting (0-100)
+  const shooting  = shotsTotal > 0 ? Math.round((shotsOn / shotsTotal) * 100) : 0
 
-  const r = ranges[pos] ?? ranges.M
-  const stat = (i: number) => r[i][0] + (hash(i + 1) % (r[i][1] - r[i][0] + 1))
+  // 패스정확도 → passing (이미 0-100)
+  const passing   = Math.min(100, Math.round(passesAccuracy))
 
-  return {
-    pace:     stat(0),
-    shooting: stat(1),
-    passing:  stat(2),
-    dribble:  stat(3),
-    defense:  stat(4),
-    physical: stat(5),
-  }
+  // 드리블성공률 → dribble (0-100)
+  const dribble   = dribblesAtt > 0 ? Math.round((dribblesSucc / dribblesAtt) * 100) : 0
+
+  // 태클+인터셉트 → defense (최대 10을 100으로 스케일)
+  const defRaw    = tacklesTotal + interceptions
+  const defense   = Math.min(100, Math.round(defRaw * 5))
+
+  // 듀얼승률 → physical (0-100)
+  const physical  = duelsTotal > 0 ? Math.round((duelsWon / duelsTotal) * 100) : 0
+
+  // 평점 (1-10 → 0-100)
+  const rating    = Math.min(100, Math.round(ratingAvg * 10))
+
+  return { shooting, passing, dribble, defense, physical, rating }
 }
 
 // ── 스탯 바 ────────────────────────────────────────────────────────
@@ -71,26 +85,44 @@ interface Props {
 }
 
 export default function PlayerSidebar({ player, open, onClose }: Props) {
+  const [radarStats, setRadarStats] = useState<PlayerStats | null>(null)
+  const [loadingStats, setLoadingStats] = useState(false)
+
   // ESC로 닫기
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const stats   = player ? generateStats(player) : null
-  const color   = POS_COLOR[player?.pos ?? ''] ?? '#94a3b8'
+  // 선수 변경 시 실 통계 로드
+  useEffect(() => {
+    if (!player) { setRadarStats(null); return }
+    setLoadingStats(true)
+    setRadarStats(null)
+    fetch(`${API_BASE}/api/players/${player.playerApiId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.stats?.length) {
+          setRadarStats(toRadarStats(data.stats as SeasonStats[]))
+        } else {
+          setRadarStats(null)
+        }
+      })
+      .catch(() => setRadarStats(null))
+      .finally(() => setLoadingStats(false))
+  }, [player?.playerApiId])
+
+  const color    = POS_COLOR[player?.pos ?? ''] ?? '#94a3b8'
   const posLabel = POS_LABEL[player?.pos ?? ''] ?? player?.pos ?? '?'
 
   const STAT_LABELS: Array<[keyof PlayerStats, string]> = [
-    ['pace',     'Pace'],
-    ['shooting', 'Shooting'],
-    ['passing',  'Passing'],
-    ['dribble',  'Dribble'],
-    ['defense',  'Defense'],
-    ['physical', 'Physical'],
+    ['shooting', 'Shot Accuracy'],
+    ['passing',  'Pass Accuracy'],
+    ['dribble',  'Dribble Success'],
+    ['defense',  'Tackles + Interceptions'],
+    ['physical', 'Duel Win Rate'],
+    ['rating',   'Rating'],
   ]
 
   return (
@@ -105,19 +137,12 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
         aria-hidden="true"
       />
 
-      {/* ── 패널 ──
-          모바일: 하단에서 슬라이드업
-          데스크탑: 우측에서 슬라이드인
-      ── */}
       <aside
         className={cn(
           'fixed z-50 bg-card border-border overflow-hidden',
           'transition-transform duration-300 ease-in-out',
-          // 모바일: 하단 드로어
           'bottom-0 left-0 right-0 max-h-[80vh] rounded-t-2xl border-t',
-          // 데스크탑: 우측 패널
           'md:top-0 md:bottom-auto md:left-auto md:right-0 md:h-screen md:w-80 md:max-h-none md:rounded-none md:border-t-0 md:border-l',
-          // 열림/닫힘 애니메이션
           open
             ? 'translate-y-0 md:translate-x-0'
             : 'translate-y-full md:translate-y-0 md:translate-x-full',
@@ -148,19 +173,17 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
         </div>
 
         {/* ── 콘텐츠 ── */}
-        {player && stats ? (
+        {player ? (
           <div className="overflow-y-auto h-full pb-16 md:pb-6">
             {/* 선수 헤더 */}
             <div className="px-4 pt-2 pb-5 border-b border-border">
               <div className="flex items-start gap-3">
-                {/* 포지션 아이콘 */}
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0"
                   style={{ backgroundColor: `${color}22`, color }}
                 >
                   {posLabel.charAt(0)}
                 </div>
-
                 <div className="min-w-0">
                   <p className="font-bold text-base leading-tight truncate">{player.name}</p>
                   <div className="flex items-center gap-2 mt-1">
@@ -184,22 +207,28 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
             {/* 레이더 차트 */}
             <div className="flex flex-col items-center pt-5 pb-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                Season Stats (Estimated)
+                2025-26 Season Stats
               </p>
-              <RadarStatsChart stats={stats} size={180} />
+              {loadingStats ? (
+                <div className="w-[180px] h-[180px] rounded-full bg-muted/30 animate-pulse" />
+              ) : radarStats ? (
+                <RadarStatsChart stats={radarStats} size={180} />
+              ) : (
+                <div className="flex flex-col items-center justify-center w-[180px] h-[180px] text-center gap-2">
+                  <span className="text-3xl opacity-30">📊</span>
+                  <p className="text-xs text-muted-foreground/60">통계 데이터 없음</p>
+                </div>
+              )}
             </div>
 
             {/* 스탯 바 */}
-            <div className="px-4 pb-4 space-y-3">
-              {STAT_LABELS.map(([key, label]) => (
-                <StatBar key={key} label={label} value={stats[key]} />
-              ))}
-            </div>
-
-            {/* 면책 */}
-            <p className="text-[10px] text-muted-foreground/50 text-center px-4 pb-2">
-              * Estimated values for visualization purposes
-            </p>
+            {radarStats && (
+              <div className="px-4 pb-4 space-y-3">
+                {STAT_LABELS.map(([key, label]) => (
+                  <StatBar key={key} label={label} value={radarStats[key]} />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-64 text-center px-6 gap-3">

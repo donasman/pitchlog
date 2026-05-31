@@ -34,7 +34,7 @@ export default async function SquadsPage() {
   const sortedGroups = Object.keys(grouped).sort()
 
   return (
-    <div className="space-y-10">
+    <div className="wrap space-y-10 py-8">
       {/* 페이지 헤더 */}
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">2026 FIFA World Cup</p>

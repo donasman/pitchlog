@@ -3,6 +3,7 @@ package com.pitchlog.domain.service;
 import com.pitchlog.api.dto.AdminMatchRequest;
 import com.pitchlog.api.dto.MatchSummaryResponse;
 import com.pitchlog.domain.entity.Match;
+import com.pitchlog.domain.exception.ResourceNotFoundException;
 import com.pitchlog.domain.repository.MatchLineupEntryRepository;
 import com.pitchlog.domain.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class AdminMatchService {
     @Transactional(readOnly = true)
     public MatchSummaryResponse getMatch(Integer fixtureId) {
         Match match = matchRepository.findByFixtureId(fixtureId)
-                .orElseThrow(() -> new IllegalArgumentException("Match not found: " + fixtureId));
+                .orElseThrow(() -> ResourceNotFoundException.match(fixtureId));
         return MatchSummaryResponse.from(match, lineupEntryRepository.existsByFixtureId(fixtureId));
     }
 
@@ -55,7 +56,7 @@ public class AdminMatchService {
     @Transactional
     public MatchSummaryResponse updateMatch(Integer fixtureId, AdminMatchRequest req) {
         Match match = matchRepository.findByFixtureId(fixtureId)
-                .orElseThrow(() -> new IllegalArgumentException("Match not found: " + fixtureId));
+                .orElseThrow(() -> ResourceNotFoundException.match(fixtureId));
 
         String statusShort = req.statusShort() != null ? req.statusShort() : match.getStatusShort();
         String statusLong  = req.statusLong()  != null ? req.statusLong()  : match.getStatusLong();
@@ -82,7 +83,7 @@ public class AdminMatchService {
     @Transactional
     public void deleteMatch(Integer fixtureId) {
         Match match = matchRepository.findByFixtureId(fixtureId)
-                .orElseThrow(() -> new IllegalArgumentException("Match not found: " + fixtureId));
+                .orElseThrow(() -> ResourceNotFoundException.match(fixtureId));
         lineupEntryRepository.deleteByFixtureId(fixtureId);
         matchRepository.delete(match);
     }

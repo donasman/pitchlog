@@ -132,7 +132,7 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="space-y-10 max-w-4xl">
+    <div className="wrap space-y-10 py-8 max-w-4xl mx-auto">
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">경기 일정</p>
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">

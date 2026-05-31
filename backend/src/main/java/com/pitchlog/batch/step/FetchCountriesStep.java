@@ -9,6 +9,7 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -34,23 +35,26 @@ public class FetchCountriesStep {
     private final CountryRepository countryRepository;
 
     /** API-Football FIFA 월드컵 식별자
-     *  ※ 개발/테스트: season=2022 (카타르 WC, 32개국, 무료 플랜 접근 가능)
-     *  ※ 프로덕션:   season=2026 (2026 WC, 48개국, Pro 플랜 필요)
+     *  local  : wc-league-id=1, season=2022 (카타르 WC — Free 플랜 접근 가능)
+     *  prod   : wc-league-id=1, season=2026 (2026 WC — Pro 플랜 필요)
      */
-    private static final int LEAGUE_ID  = 1;
-    private static final int SEASON     = 2022; // TODO: 프로덕션 배포 시 2026으로 변경
+    @Value("${api-football.wc-league-id:1}")
+    private Integer leagueId;
+
+    @Value("${api-football.season:2026}")
+    private Integer season;
 
     public Step step() {
         return new StepBuilder("fetchCountriesStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
                     log.info("[FetchCountriesStep] 참가국 수집 시작 — league={}, season={}",
-                            LEAGUE_ID, SEASON);
+                            leagueId, season);
 
                     ApiFootballTeamsResponse response = apiFootballClient.get()
                             .uri(uriBuilder -> uriBuilder
                                     .path("/teams")
-                                    .queryParam("league", LEAGUE_ID)
-                                    .queryParam("season", SEASON)
+                                    .queryParam("league", leagueId)
+                                    .queryParam("season", season)
                                     .build())
                             .retrieve()
                             .bodyToMono(ApiFootballTeamsResponse.class)

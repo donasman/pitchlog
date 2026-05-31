@@ -3,9 +3,7 @@ import type { Country, SquadResponse, PlayerDetail, StatsRanking, MatchSummary, 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.pitchlog.com'
 
 async function fetcher<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    cache: 'no-store',
-  })
+  const res = await fetch(`${BASE_URL}${path}`)
   if (!res.ok) {
     throw new Error(`API Error: ${res.status} ${path}`)
   }

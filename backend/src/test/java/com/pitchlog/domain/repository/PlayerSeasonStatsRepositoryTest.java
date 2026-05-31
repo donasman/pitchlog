@@ -50,12 +50,16 @@ class PlayerSeasonStatsRepositoryTest {
         // 시즌 통계 저장
         PlayerSeasonStats activeStats = PlayerSeasonStats.create(
                 activePlayer, 200, "Club A", 39, "Premier League", 2025);
-        activeStats.updateStats(30, 12, 7, 2, 0, 8.1);
+        activeStats.updateStats(
+                30, 28, 2520, 12, 7, null, 2, 0, 8.1,
+                1200, 87, 85, 42, 120, 78, 95, 34, 312, 178, 45, 62);
         statsRepository.save(activeStats);
 
         PlayerSeasonStats inactiveStats = PlayerSeasonStats.create(
                 inactivePlayer, 201, "Club B", 61, "Ligue 1", 2025);
-        inactiveStats.updateStats(20, 5, 3, 1, 0, 7.5);
+        inactiveStats.updateStats(
+                20, 18, 1620, 5, 3, null, 1, 0, 7.5,
+                900, 82, 60, 28, 90, 55, 70, 22, 220, 115, 38, 41);
         statsRepository.save(inactiveStats);
     }
 

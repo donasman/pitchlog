@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import type { Country } from '@/types'
+import type { Country, StatsRanking } from '@/types'
+import { playerSlug } from '@/lib/utils'
 
 export const metadata: Metadata = {
   title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
@@ -15,31 +16,16 @@ export const metadata: Metadata = {
   },
 }
 
-const TOP_SCORERS = [
-  { rank: 1, name: 'Kylian Mbappé', team: 'France', value: 6 },
-  { rank: 2, name: 'Erling Haaland', team: 'Norway', value: 5 },
-  { rank: 3, name: 'Harry Kane', team: 'England', value: 4 },
-  { rank: 4, name: 'Lionel Messi', team: 'Argentina', value: 4 },
-  { rank: 5, name: 'Vinicius Jr.', team: 'Brazil', value: 3 },
-  { rank: 6, name: 'Lamine Yamal', team: 'Spain', value: 3 },
-]
-
-const TOP_ASSISTS = [
-  { rank: 1, name: 'Lionel Messi', team: 'Argentina', value: 5 },
-  { rank: 2, name: 'Kevin De Bruyne', team: 'Belgium', value: 4 },
-  { rank: 3, name: 'Bukayo Saka', team: 'England', value: 3 },
-  { rank: 4, name: 'Pedri', team: 'Spain', value: 3 },
-  { rank: 5, name: 'Bruno Fernandes', team: 'Portugal', value: 2 },
-  { rank: 6, name: 'Rodri', team: 'Spain', value: 2 },
-]
-
 export default async function HomePage() {
   let countries: Country[] = []
-  try {
-    countries = await api.getCountries()
-  } catch {
-    // 빌드 시 API 없을 경우 빈 배열로 처리
-  }
+  let topScorers: StatsRanking[] = []
+  let topAssists: StatsRanking[] = []
+
+  await Promise.allSettled([
+    api.getCountries().then(d => { countries = d }),
+    api.getTopScorers(6).then(d => { topScorers = d }),
+    api.getTopAssists(6).then(d => { topAssists = d }),
+  ])
 
   return (
     <>
@@ -121,23 +107,34 @@ export default async function HomePage() {
                     <circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>
                   </svg>
                 </span>
-                <div><div className="fc-num">94.2</div><div className="fc-lab">Pass Accuracy</div></div>
+                <div>
+                  <div className="fc-num">{countries.length > 0 ? countries.length : 48}<span style={{ fontSize: 11 }}>개국</span></div>
+                  <div className="fc-lab">참가국 스쿼드 수록</div>
+                </div>
               </div>
-              <div className="float-chip" style={{ bottom: 70, right: -18, animation: 'floaty 5s ease-in-out 1.4s infinite' }}>
-                <span className="fc-ic">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="4"/>
-                  </svg>
-                </span>
-                <div><div className="fc-num">6 골</div><div className="fc-lab">Mbappé · Top Scorer</div></div>
-              </div>
+              {topScorers[0] && (
+                <div className="float-chip" style={{ bottom: 70, right: -18, animation: 'floaty 5s ease-in-out 1.4s infinite' }}>
+                  <span className="fc-ic">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="4"/>
+                    </svg>
+                  </span>
+                  <div>
+                    <div className="fc-num">{topScorers[0].goals ?? 0} 골</div>
+                    <div className="fc-lab">{topScorers[0].playerName} · Top Scorer</div>
+                  </div>
+                </div>
+              )}
               <div className="float-chip" style={{ bottom: 8, left: 30, animation: 'floaty 5s ease-in-out 2.6s infinite' }}>
                 <span className="fc-ic">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 17l6-6 4 4 7-7"/>
                   </svg>
                 </span>
-                <div><div className="fc-num">+38%</div><div className="fc-lab">xG Overperform</div></div>
+                <div>
+                  <div className="fc-num">{topAssists[0]?.assists ?? 0} 도움</div>
+                  <div className="fc-lab">{topAssists[0]?.playerName ?? 'Top Assist'} · Assists</div>
+                </div>
               </div>
             </div>
           </div>
@@ -216,20 +213,34 @@ export default async function HomePage() {
                 득점왕 · Scorers
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {TOP_SCORERS.map((p) => (
-                  <div key={p.rank} className="lb-row">
-                    <span className={`lb-rank${p.rank === 1 ? ' gold' : ''}`}>{p.rank}</span>
-                    <div className="lb-av"><span className="ini">{p.name.charAt(0)}</span></div>
+                {topScorers.length > 0 ? topScorers.map((p, i) => (
+                  <Link
+                    key={p.playerId}
+                    href={`/players/${playerSlug(p.playerId, p.playerName)}`}
+                    className="lb-row"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <span className={`lb-rank${i === 0 ? ' gold' : ''}`}>{i + 1}</span>
+                    {p.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.photoUrl} alt={p.playerName} className="lb-av" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="lb-av"><span className="ini">{p.playerName.charAt(0)}</span></div>
+                    )}
                     <div className="lb-meta">
-                      <div className="nm">{p.name}</div>
-                      <div className="sub">{p.team}</div>
+                      <div className="nm">{p.playerName}</div>
+                      <div className="sub">{p.nationality ?? '-'}</div>
                     </div>
                     <div className="lb-val">
-                      <div className="v">{p.value}</div>
+                      <div className="v">{p.goals ?? 0}</div>
                       <div className="vl">Goals</div>
                     </div>
+                  </Link>
+                )) : (
+                  <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '20px 0' }}>
+                    데이터 수집 후 표시됩니다
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -239,20 +250,34 @@ export default async function HomePage() {
                 도움왕 · Assists
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {TOP_ASSISTS.map((p) => (
-                  <div key={p.rank} className="lb-row">
-                    <span className={`lb-rank${p.rank === 1 ? ' gold' : ''}`}>{p.rank}</span>
-                    <div className="lb-av"><span className="ini">{p.name.charAt(0)}</span></div>
+                {topAssists.length > 0 ? topAssists.map((p, i) => (
+                  <Link
+                    key={p.playerId}
+                    href={`/players/${playerSlug(p.playerId, p.playerName)}`}
+                    className="lb-row"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <span className={`lb-rank${i === 0 ? ' gold' : ''}`}>{i + 1}</span>
+                    {p.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.photoUrl} alt={p.playerName} className="lb-av" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="lb-av"><span className="ini">{p.playerName.charAt(0)}</span></div>
+                    )}
                     <div className="lb-meta">
-                      <div className="nm">{p.name}</div>
-                      <div className="sub">{p.team}</div>
+                      <div className="nm">{p.playerName}</div>
+                      <div className="sub">{p.nationality ?? '-'}</div>
                     </div>
                     <div className="lb-val">
-                      <div className="v">{p.value}</div>
+                      <div className="v">{p.assists ?? 0}</div>
                       <div className="vl">Assists</div>
                     </div>
+                  </Link>
+                )) : (
+                  <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '20px 0' }}>
+                    데이터 수집 후 표시됩니다
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>

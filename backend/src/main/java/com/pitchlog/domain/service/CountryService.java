@@ -4,6 +4,7 @@ import com.pitchlog.api.dto.CountryResponse;
 import com.pitchlog.api.dto.SquadResponse;
 import com.pitchlog.domain.entity.Country;
 import com.pitchlog.domain.entity.SquadEntry;
+import com.pitchlog.domain.exception.ResourceNotFoundException;
 import com.pitchlog.domain.repository.CountryRepository;
 import com.pitchlog.domain.repository.SquadEntryRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class CountryService {
 
     public SquadResponse findSquadByCountryCode(String code) {
         Country country = countryRepository.findByCode(code)
-                .orElseThrow(() -> new IllegalArgumentException("국가 코드를 찾을 수 없습니다: " + code));
+                .orElseThrow(() -> ResourceNotFoundException.country(code));
 
         List<SquadEntry> entries = squadEntryRepository.findActiveByCountryCode(code);
 

@@ -35,11 +35,17 @@ public record ApiFootballPlayerStatsResponse(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record StatisticsDetail(
-            @JsonProperty("team") TeamRef team,
-            @JsonProperty("league") LeagueRef league,
-            @JsonProperty("games") GamesStats games,
-            @JsonProperty("goals") GoalsStats goals,
-            @JsonProperty("cards") CardsStats cards
+            @JsonProperty("team")      TeamRef      team,
+            @JsonProperty("league")    LeagueRef    league,
+            @JsonProperty("games")     GamesStats   games,
+            @JsonProperty("goals")     GoalsStats   goals,
+            @JsonProperty("cards")     CardsStats   cards,
+            @JsonProperty("passes")    PassesStats  passes,
+            @JsonProperty("shots")     ShotsStats   shots,
+            @JsonProperty("dribbles")  DribblesStats dribbles,
+            @JsonProperty("tackles")   TacklesStats tackles,
+            @JsonProperty("duels")     DuelsStats   duels,
+            @JsonProperty("fouls")     FoulsStats   fouls
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -57,19 +63,58 @@ public record ApiFootballPlayerStatsResponse(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record GamesStats(
-            @JsonProperty("appearences") Integer appearances,
-            @JsonProperty("rating") String rating
+            @JsonProperty("appearences") Integer appearances,  // API 오타 그대로
+            @JsonProperty("lineups")     Integer lineups,
+            @JsonProperty("minutes")     Integer minutes,
+            @JsonProperty("rating")      String  rating
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record GoalsStats(
-            @JsonProperty("total") Integer total,
-            @JsonProperty("assists") Integer assists
+            @JsonProperty("total")   Integer total,
+            @JsonProperty("assists") Integer assists,
+            @JsonProperty("saves")   Integer saves
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CardsStats(
             @JsonProperty("yellow") Integer yellow,
-            @JsonProperty("red") Integer red
+            @JsonProperty("red")    Integer red
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PassesStats(
+            @JsonProperty("total")    Integer total,
+            @JsonProperty("accuracy") Integer accuracy  // 정수 퍼센트 (예: 85)
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ShotsStats(
+            @JsonProperty("total") Integer total,
+            @JsonProperty("on")    Integer on
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DribblesStats(
+            @JsonProperty("attempts") Integer attempts,
+            @JsonProperty("success")  Integer success
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record TacklesStats(
+            @JsonProperty("total")         Integer total,
+            @JsonProperty("interceptions") Integer interceptions
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DuelsStats(
+            @JsonProperty("total") Integer total,
+            @JsonProperty("won")   Integer won
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FoulsStats(
+            @JsonProperty("committed") Integer committed,
+            @JsonProperty("drawn")     Integer drawn
     ) {}
 }

@@ -40,7 +40,10 @@ public class AdminAuthFilter extends OncePerRequestFilter {
     );
 
     private static final Set<String> PUBLIC_PATHS = Set.of(
-            "/api/admin/auth/login"
+            "/api/admin/auth/login",
+            "/api/batch/sync-players-lite",   // 로컬 파이프라인 검증용 — 인증 불필요
+            "/api/batch/sync-players",
+            "/api/batch/sync-final-squad"
     );
 
     @Override

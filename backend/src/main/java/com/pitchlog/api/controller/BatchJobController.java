@@ -28,14 +28,13 @@ public class BatchJobController {
 
     private final JobLauncher jobLauncher;
     private final Job syncWorldCupPlayers;
+    private final Job syncWorldCupPlayersLite;
     private final Job syncFinalSquad;
 
     /**
-     * 월드컵 선수 데이터 전체 수집 잡 실행
-     * - Step1: 참가국 수집
-     * - Step2: 스쿼드 수집
-     * - Step3: 선수 통계 수집
-     * - Step4: 경기 일정 수집
+     * 전체 파이프라인 실행 (Step1→2→3→4)
+     * Step3에서 선수 1명당 API 1콜 소모 — Free 플랜(100콜/일)으로는 실행 불가.
+     * 프로덕션 배포 후 사용.
      */
     @PostMapping("/sync-players")
     public ResponseEntity<Map<String, String>> syncPlayers() {
@@ -43,9 +42,18 @@ public class BatchJobController {
     }
 
     /**
+     * 검증용 Lite 파이프라인 (Step1→2→4, Step3 선수통계 제외)
+     * Free 플랜으로 국가→스쿼드→경기 전체 흐름 검증 시 사용.
+     * 총 API 콜: 1(국가) + 국가수(스쿼드) + 1(경기) = ~34콜 (Free 플랜 가능)
+     */
+    @PostMapping("/sync-players-lite")
+    public ResponseEntity<Map<String, String>> syncPlayersLite() {
+        return runJob(syncWorldCupPlayersLite, "syncWorldCupPlayersLiteJob");
+    }
+
+    /**
      * 최종 엔트리 동기화 잡 실행
      * 월드컵 최종 명단 발표 후 1회 수동 트리거.
-     * 기존 squad_entries 를 비활성화 후 최신 26인만 active=true 로 갱신.
      */
     @PostMapping("/sync-final-squad")
     public ResponseEntity<Map<String, String>> syncFinalSquad() {

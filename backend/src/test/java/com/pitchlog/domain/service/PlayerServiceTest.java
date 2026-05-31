@@ -128,7 +128,17 @@ class PlayerServiceTest {
                                           Integer goals, Integer assists) {
         PlayerSeasonStats stats = PlayerSeasonStats.create(
                 player, 100, "Team", leagueApiId, "League " + leagueApiId, 2025);
-        stats.updateStats(10, goals, assists, 0, 0, null);
+        stats.updateStats(
+                10, null, null,          // appearances, lineups, minutes
+                goals, assists, null,     // goals, assists, saves
+                0, 0, null,              // yellowCards, redCards, rating
+                null, null,              // passesTotal, passesAccuracy
+                null, null,              // shotsTotal, shotsOn
+                null, null,              // dribblesAttempts, dribblesSuccess
+                null, null,              // tacklesTotal, interceptions
+                null, null,              // duelsTotal, duelsWon
+                null, null               // foulsCommitted, foulsDrawn
+        );
         return stats;
     }
 }

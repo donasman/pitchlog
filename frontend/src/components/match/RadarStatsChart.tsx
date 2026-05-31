@@ -1,12 +1,12 @@
 'use client'
 
 export interface PlayerStats {
-  pace: number
-  shooting: number
-  passing: number
-  dribble: number
-  defense: number
-  physical: number
+  shooting: number  // 유효슈팅률
+  passing:  number  // 패스정확도
+  dribble:  number  // 드리블성공률
+  defense:  number  // 태클+인터셉트
+  physical: number  // 듀얼승률
+  rating:   number  // 평점 (×10)
 }
 
 interface Props {
@@ -15,12 +15,12 @@ interface Props {
 }
 
 const AXES = [
-  { key: 'pace',     label: 'PAC' },
-  { key: 'shooting', label: 'SHO' },
+  { key: 'shooting', label: 'SHT' },
   { key: 'passing',  label: 'PAS' },
   { key: 'dribble',  label: 'DRI' },
   { key: 'defense',  label: 'DEF' },
   { key: 'physical', label: 'PHY' },
+  { key: 'rating',   label: 'RTG' },
 ] as const
 
 type AxisKey = typeof AXES[number]['key']
