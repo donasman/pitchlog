@@ -13,9 +13,10 @@ interface Props {
 export async function generateStaticParams() {
   try {
     const countries = await api.getCountries()
-    return countries.map((c) => ({ country: c.code.toLowerCase() }))
+    const result = countries.map((c) => ({ country: c.code.toLowerCase() }))
+    return result.length > 0 ? result : [{ country: 'placeholder' }]
   } catch {
-    return []
+    return [{ country: 'placeholder' }]
   }
 }
 

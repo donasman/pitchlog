@@ -13,9 +13,10 @@ interface Props {
 export async function generateStaticParams() {
   try {
     const matches = await api.getMatches()
+    if (matches.length === 0) return [{ fixtureId: '0' }]
     return matches.map((m) => ({ fixtureId: String(m.fixtureId) }))
   } catch {
-    return []
+    return [{ fixtureId: '0' }]
   }
 }
 

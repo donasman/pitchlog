@@ -28,9 +28,10 @@ export async function generateStaticParams() {
         }
       })
     )
-    return Array.from(slugs).map((slug) => ({ slug }))
+    const result = Array.from(slugs).map((slug) => ({ slug }))
+    return result.length > 0 ? result : [{ slug: '0-placeholder' }]
   } catch {
-    return []
+    return [{ slug: '0-placeholder' }]
   }
 }
 
