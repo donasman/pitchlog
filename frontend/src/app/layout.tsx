@@ -42,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link
           rel="stylesheet"
@@ -177,7 +178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="foot-col">
                 <h4>관리</h4>
                 <Link href="/admin">어드민 로그인</Link>
-                <Link href="/admin/matches">경기 관리</Link>
+                <Link href="/admin/">경기 관리</Link>
               </div>
             </div>
             <div style={{
