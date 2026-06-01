@@ -177,26 +177,23 @@ public class FetchSquadsStep {
         Integer foulsCommitted   = stat.fouls()    != null ? stat.fouls().committed()          : null;
         Integer foulsDrawn       = stat.fouls()    != null ? stat.fouls().drawn()              : null;
 
+        PlayerSeasonStats.StatsValues values = new PlayerSeasonStats.StatsValues(
+                appearances, lineups, minutes, goals, assists, saves,
+                yellow, red, rating,
+                passesTotal, passesAccuracy, shotsTotal, shotsOn,
+                dribblesAttempts, dribblesSuccess, tacklesTotal, interceptions,
+                duelsTotal, duelsWon, foulsCommitted, foulsDrawn);
+
         playerSeasonStatsRepository
                 .findByPlayerIdAndTeamApiIdAndLeagueApiIdAndSeasonYear(
                         player.getId(), teamApiId, leagueApiId, season)
                 .ifPresentOrElse(
-                        existing -> existing.updateStats(
-                                appearances, lineups, minutes, goals, assists, saves,
-                                yellow, red, rating,
-                                passesTotal, passesAccuracy, shotsTotal, shotsOn,
-                                dribblesAttempts, dribblesSuccess, tacklesTotal, interceptions,
-                                duelsTotal, duelsWon, foulsCommitted, foulsDrawn),
+                        existing -> existing.updateStats(values),
                         () -> {
                             PlayerSeasonStats s = PlayerSeasonStats.create(
                                     player, teamApiId, stat.team().name(),
                                     leagueApiId, stat.league().name(), season);
-                            s.updateStats(
-                                    appearances, lineups, minutes, goals, assists, saves,
-                                    yellow, red, rating,
-                                    passesTotal, passesAccuracy, shotsTotal, shotsOn,
-                                    dribblesAttempts, dribblesSuccess, tacklesTotal, interceptions,
-                                    duelsTotal, duelsWon, foulsCommitted, foulsDrawn);
+                            s.updateStats(values);
                             playerSeasonStatsRepository.save(s);
                         }
                 );
