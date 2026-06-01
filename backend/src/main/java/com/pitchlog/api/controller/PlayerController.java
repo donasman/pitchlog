@@ -12,7 +12,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/players")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:3000", "https://pitchlog.com"})
 public class PlayerController {
 
     private final PlayerService playerService;

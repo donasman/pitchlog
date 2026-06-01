@@ -12,7 +12,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/countries")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:3000", "https://pitchlog.com"})
 public class CountryController {
 
     private final CountryService countryService;
