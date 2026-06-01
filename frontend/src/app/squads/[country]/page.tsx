@@ -3,6 +3,10 @@ import Link from 'next/link'
 import { api } from '@/lib/api'
 import { positionLabel, playerSlug, formatBirthDate } from '@/lib/utils'
 import type { SquadResponse } from '@/types'
+import EmptyState from '@/components/ui/EmptyState'
+import PlayerAvatar from '@/components/ui/PlayerAvatar'
+import CountryFlag from '@/components/ui/CountryFlag'
+import BackLink from '@/components/ui/BackLink'
 
 export const dynamicParams = false
 
@@ -42,29 +46,16 @@ const POSITION_EMOJI: Record<string, string> = {
   FWD: 'FWD',
 }
 
-function NotFound({ code }: { code: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-      <div className="text-5xl">&#x26BD;</div>
-      <h1 className="text-2xl font-bold">Squad not found</h1>
-      <p className="text-muted-foreground text-sm">Could not load squad for {code}.</p>
-      <Link href="/squads" className="text-sm text-primary hover:underline underline-offset-4">
-        Back to Squads
-      </Link>
-    </div>
-  )
-}
-
 export default async function CountrySquadPage({ params }: Props) {
   const code = params.country.toUpperCase()
   let squad: SquadResponse | null = null
   try {
     squad = await api.getSquad(code)
   } catch {
-    return <NotFound code={code} />
+    return <EmptyState title="Squad not found" message={`Could not load squad for ${code}.`} backHref="/squads" backLabel="Back to Squads" />
   }
 
-  if (!squad) return <NotFound code={code} />
+  if (!squad) return <EmptyState title="Squad not found" message={`Could not load squad for ${code}.`} backHref="/squads" backLabel="Back to Squads" />
 
   const byPosition = POSITION_ORDER.reduce<Record<string, typeof squad.players>>((acc, pos) => {
     acc[pos] = squad!.players.filter((p) => p.position === pos)
@@ -73,29 +64,16 @@ export default async function CountrySquadPage({ params }: Props) {
 
   return (
     <div className="wrap space-y-10 py-8">
-      <Link
-        href="/squads"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        All Squads
-      </Link>
+      <BackLink href="/squads" label="All Squads" />
 
       <div className="flex items-center gap-5">
-        {squad.country.flagUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={squad.country.flagUrl}
-            alt={`${squad.country.name} flag`}
-            className="w-20 h-[52px] object-cover rounded-lg shadow-md flex-shrink-0"
-          />
-        ) : (
-          <div className="w-20 h-[52px] rounded-lg bg-muted flex items-center justify-center text-sm font-bold flex-shrink-0">
-            {code}
-          </div>
-        )}
+        <CountryFlag
+          src={squad.country.flagUrl}
+          code={code}
+          name={squad.country.name}
+          className="w-20 h-[52px] rounded-lg shadow-md flex-shrink-0"
+          textClassName="text-sm font-bold"
+        />
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-0.5">
             {squad.country.groupName ? `Group ${squad.country.groupName}` : '2026 FIFA World Cup'}
@@ -130,18 +108,12 @@ export default async function CountrySquadPage({ params }: Props) {
                   href={`/players/${playerSlug(player.id, player.name)}`}
                   className="group flex items-center gap-3 p-3.5 rounded-xl border border-border bg-card hover:border-primary/60 hover:bg-primary/5 transition-all"
                 >
-                  {player.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={player.photoUrl}
-                      alt={player.name}
-                      className="w-12 h-12 rounded-full object-cover flex-shrink-0 border-2 border-border group-hover:border-primary/40 transition-colors"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-sm font-bold flex-shrink-0 border-2 border-border">
-                      {player.name.charAt(0)}
-                    </div>
-                  )}
+                  <PlayerAvatar
+                    src={player.photoUrl}
+                    name={player.name}
+                    className="w-12 h-12 rounded-full flex-shrink-0 border-2 border-border group-hover:border-primary/40 transition-colors"
+                    textClassName="text-sm"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-1.5 flex-wrap">
                       {player.jerseyNumber != null && (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Country, MatchSummary } from '@/types'
 import CountrySearchInput from './CountrySearchInput'
 import { adminFetch } from '@/lib/adminAuth'
+import { API_BASE } from '@/lib/config'
 
 const ROUNDS = [
   'Group Stage - 1', 'Group Stage - 2', 'Group Stage - 3',
@@ -58,7 +59,7 @@ export default function MatchForm({ countries, initial, fixtureId }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+  const apiBase = API_BASE
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

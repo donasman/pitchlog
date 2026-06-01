@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { api } from '@/lib/api'
-import type { StatsRanking } from '@/types'
-import StatsRankingTable from '@/components/stats/StatsRankingTable'
+import StatsRankingPage from '@/components/stats/StatsRankingPage'
 
 export const metadata: Metadata = {
   title: '2026 월드컵 득점 순위 — Top Scorers',
@@ -16,31 +13,14 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function TopScorersPage() {
-  let rankings: StatsRanking[] = []
-  try {
-    rankings = await api.getTopScorers(30)
-  } catch {
-    // API 미응답 시 빈 목록 표시
-  }
-
+export default function TopScorersPage() {
   return (
-    <div className="wrap space-y-8 py-8 max-w-4xl mx-auto">
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Stats</p>
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight flex items-center gap-2">
-          <span>&#x26BD;</span> Top Scorers
-        </h1>
-        <p className="text-muted-foreground text-sm">2025-26 Season - World Cup squads only</p>
-      </div>
-
-      <StatsRankingTable rankings={rankings} mode="goals" />
-
-      <div className="text-center pt-2">
-        <Link href="/stats/top-assists" className="text-sm text-primary hover:underline underline-offset-4">
-          Top Assists &rarr;
-        </Link>
-      </div>
-    </div>
+    <StatsRankingPage
+      mode="goals"
+      icon="⚽"
+      title="Top Scorers"
+      crossLinkHref="/stats/top-assists"
+      crossLinkLabel="Top Assists"
+    />
   )
 }

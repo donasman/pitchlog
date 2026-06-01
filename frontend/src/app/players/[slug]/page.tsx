@@ -3,6 +3,9 @@ import Link from 'next/link'
 import { api } from '@/lib/api'
 import { formatBirthDate, playerSlug } from '@/lib/utils'
 import type { PlayerDetail } from '@/types'
+import EmptyState from '@/components/ui/EmptyState'
+import PlayerAvatar from '@/components/ui/PlayerAvatar'
+import BackLink from '@/components/ui/BackLink'
 
 export const dynamicParams = false
 
@@ -48,58 +51,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-function NotFound() {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-      <div className="text-5xl">&#x26BD;</div>
-      <h1 className="text-2xl font-bold">Player not found</h1>
-      <p className="text-muted-foreground text-sm">The player data could not be loaded.</p>
-      <Link href="/squads" className="text-sm text-primary hover:underline underline-offset-4">
-        Back to Squads
-      </Link>
-    </div>
-  )
-}
-
 export default async function PlayerDetailPage({ params }: Props) {
   const id = parseSlug(params.slug)
   let player: PlayerDetail | null = null
   try {
     player = await api.getPlayer(id)
   } catch {
-    return <NotFound />
+    return <EmptyState title="Player not found" message="The player data could not be loaded." backHref="/squads" backLabel="Back to Squads" />
   }
 
-  if (!player) return <NotFound />
+  if (!player) return <EmptyState title="Player not found" message="The player data could not be loaded." backHref="/squads" backLabel="Back to Squads" />
 
   return (
     <div className="wrap space-y-10 py-8 max-w-3xl mx-auto">
-      <Link
-        href="/squads"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        All Squads
-      </Link>
+      <BackLink href="/squads" label="All Squads" />
 
       {/* Profile card */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="h-1.5 bg-gold-gradient" />
         <div className="p-6 flex flex-col sm:flex-row gap-6 items-start">
-          {player.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={player.photoUrl}
-              alt={player.name}
-              className="w-28 h-28 rounded-2xl object-cover flex-shrink-0 border-2 border-border shadow-lg"
-            />
-          ) : (
-            <div className="w-28 h-28 rounded-2xl bg-muted flex items-center justify-center text-3xl font-bold flex-shrink-0">
-              {player.name.charAt(0)}
-            </div>
-          )}
+          <PlayerAvatar
+            src={player.photoUrl}
+            name={player.name}
+            className="w-28 h-28 rounded-2xl flex-shrink-0 border-2 border-border shadow-lg"
+            textClassName="text-3xl"
+          />
           <div className="flex-1 min-w-0 space-y-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-0.5">

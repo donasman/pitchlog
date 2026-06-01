@@ -1,5 +1,7 @@
+import { API_BASE } from './config'
+
 const TOKEN_KEY = 'pitchlog_admin_token'
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+const BASE = API_BASE
 
 export interface AdminUser {
   username: string

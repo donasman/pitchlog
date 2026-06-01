@@ -5,12 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { MatchSummary } from '@/types'
 import { fetchMe, adminFetch, logout, type AdminUser } from '@/lib/adminAuth'
-
-function formatDate(iso: string | null) {
-  if (!iso) return 'TBD'
-  const d = new Date(iso)
-  return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
+import { API_BASE } from '@/lib/config'
+import { formatDateTime } from '@/lib/format'
 
 export default function AdminPage() {
   const router = useRouter()
@@ -38,7 +34,7 @@ export default function AdminPage() {
     try {
       // 경기 목록은 공개 API
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'}/api/matches`,
+        `${API_BASE}/api/matches`,
         { cache: 'no-store' },
       )
       if (!res.ok) throw new Error('불러오기 실패')
@@ -178,7 +174,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-border">
                 {byRound.get(round)!.map((m) => (
                   <tr key={m.fixtureId} className="hover:bg-muted/20 transition-colors">
-                    <td className="py-3 pl-4 pr-2 text-xs text-muted-foreground">{formatDate(m.matchDate)}</td>
+                    <td className="py-3 pl-4 pr-2 text-xs text-muted-foreground">{formatDateTime(m.matchDate)}</td>
                     <td className="py-3 pr-3">
                       <div className="flex items-center gap-2">
                         {m.home.logo && <img src={m.home.logo} alt="" className="w-5 h-4 object-cover rounded-sm" />}{/* eslint-disable-line @next/next/no-img-element */}

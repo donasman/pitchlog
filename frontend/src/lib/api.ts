@@ -1,6 +1,7 @@
 import type { Country, SquadResponse, PlayerDetail, StatsRanking, MatchSummary, MatchDetail } from '@/types'
+import { API_BASE } from './config'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.pitchlog.com'
+const BASE_URL = API_BASE
 
 async function fetcher<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`)

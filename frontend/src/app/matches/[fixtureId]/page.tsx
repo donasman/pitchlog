@@ -1,8 +1,13 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { api } from '@/lib/api'
 import type { MatchDetail } from '@/types'
 import PitchFormation from '@/components/match/PitchFormation'
+import EmptyState from '@/components/ui/EmptyState'
+import TeamLogo from '@/components/ui/TeamLogo'
+import BackLink from '@/components/ui/BackLink'
+import StatusBadge from '@/components/match/StatusBadge'
+import { isFinished as isFinishedStatus } from '@/lib/matchStatus'
+import { formatMatchDateLong, formatMatchTime } from '@/lib/format'
 
 export const dynamicParams = false
 
@@ -35,48 +40,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-function StatusBadge({ status, elapsed }: { status: string | null; elapsed: number | null }) {
-  if (!status) return null
-  const live = ['1H', '2H', 'ET', 'BT', 'P', 'INT'].includes(status)
-  const finished = ['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(status)
-  if (live) return (
-    <span className="inline-flex items-center gap-1.5 text-sm font-bold text-green-400 bg-green-400/10 border border-green-400/30 px-3 py-1 rounded-full">
-      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-      {elapsed != null ? `${elapsed}'` : 'LIVE'}
-    </span>
-  )
-  if (status === 'HT') return (
-    <span className="text-sm font-bold text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 px-3 py-1 rounded-full">Half Time</span>
-  )
-  if (finished) return (
-    <span className="text-sm font-bold text-muted-foreground bg-muted px-3 py-1 rounded-full">Full Time</span>
-  )
-  return <span className="text-sm text-muted-foreground">Not Started</span>
-}
-
-function NotFound() {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-      <div className="text-5xl">&#x26BD;</div>
-      <h1 className="text-2xl font-bold">Match not found</h1>
-      <p className="text-muted-foreground text-sm">The match data could not be loaded.</p>
-      <Link href="/matches" className="text-sm text-primary hover:underline underline-offset-4">
-        Back to Schedule
-      </Link>
-    </div>
-  )
-}
-
 export default async function MatchDetailPage({ params }: Props) {
   let match: MatchDetail | null = null
   try {
     match = await api.getMatch(Number(params.fixtureId))
   } catch {
-    return <NotFound />
+    return <EmptyState title="Match not found" message="The match data could not be loaded." backHref="/matches" backLabel="Back to Schedule" />
   }
-  if (!match) return <NotFound />
+  if (!match) return <EmptyState title="Match not found" message="The match data could not be loaded." backHref="/matches" backLabel="Back to Schedule" />
 
-  const isFinished = match.statusShort && ['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(match.statusShort)
+  const isFinished = isFinishedStatus(match.statusShort)
   const hasStarted = match.statusShort !== 'NS'
   const matchDate = match.matchDate ? new Date(match.matchDate) : null
 
@@ -93,15 +66,7 @@ export default async function MatchDetailPage({ params }: Props) {
   return (
     <div className="wrap space-y-8 py-8 max-w-3xl mx-auto">
       {/* 뒤로가기 */}
-      <Link
-        href="/matches"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        All Fixtures
-      </Link>
+      <BackLink href="/matches" label="All Fixtures" />
 
       {/* 스코어카드 */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -114,11 +79,11 @@ export default async function MatchDetailPage({ params }: Props) {
             </span>
             <span>
               {matchDate
-                ? matchDate.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+                ? formatMatchDateLong(match.matchDate)
                 : 'TBD'}
               {matchDate && (
                 <span className="ml-2">
-                  {matchDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  {formatMatchTime(match.matchDate, 'en-US')}
                 </span>
               )}
             </span>
@@ -128,14 +93,7 @@ export default async function MatchDetailPage({ params }: Props) {
           <div className="flex items-center justify-between gap-4">
             {/* 홈팀 */}
             <div className="flex-1 flex flex-col items-center gap-2 text-center">
-              {match.home.logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={match.home.logo} alt={match.home.name ?? ''} className="w-16 h-16 object-contain" />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-lg font-bold">
-                  {match.home.name?.charAt(0)}
-                </div>
-              )}
+              <TeamLogo src={match.home.logo} name={match.home.name} className="w-16 h-16" rounded="rounded-full" textClassName="text-lg" />
               <span className="font-bold text-base sm:text-lg">{match.home.name}</span>
             </div>
 
@@ -158,19 +116,12 @@ export default async function MatchDetailPage({ params }: Props) {
               ) : (
                 <span className="text-3xl font-bold text-muted-foreground/40">vs</span>
               )}
-              <StatusBadge status={match.statusShort} elapsed={match.elapsed} />
+              <StatusBadge status={match.statusShort} elapsed={match.elapsed} size="md" />
             </div>
 
             {/* 어웨이팀 */}
             <div className="flex-1 flex flex-col items-center gap-2 text-center">
-              {match.away.logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={match.away.logo} alt={match.away.name ?? ''} className="w-16 h-16 object-contain" />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-lg font-bold">
-                  {match.away.name?.charAt(0)}
-                </div>
-              )}
+              <TeamLogo src={match.away.logo} name={match.away.name} className="w-16 h-16" rounded="rounded-full" textClassName="text-lg" />
               <span className="font-bold text-base sm:text-lg">{match.away.name}</span>
             </div>
           </div>
