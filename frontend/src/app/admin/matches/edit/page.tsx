@@ -5,8 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import type { Country, MatchSummary } from '@/types'
 import MatchForm from '@/components/admin/MatchForm'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+import { API_BASE } from '@/lib/config'
 
 function EditMatchContent() {
   const searchParams = useSearchParams()

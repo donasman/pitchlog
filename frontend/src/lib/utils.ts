@@ -25,9 +25,5 @@ export function playerSlug(id: number, name: string): string {
   return `${id}-${slug}`
 }
 
-/** 날짜 포맷 (YYYY-MM-DD → YYYY년 MM월 DD일) */
-export function formatBirthDate(dateStr: string | null): string {
-  if (!dateStr) return '-'
-  const [y, m, d] = dateStr.split('-')
-  return `${y}년 ${m}월 ${d}일`
-}
+// 날짜·시간 포맷은 lib/format.ts로 통합. 기존 import 경로 호환을 위해 재노출한다.
+export { formatBirthDate } from './format'

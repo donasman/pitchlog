@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { Country } from '@/types'
 import MatchForm from '@/components/admin/MatchForm'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+import { API_BASE } from '@/lib/config'
 
 export default function NewMatchPage() {
   const [countries, setCountries] = useState<Country[]>([])

@@ -5,8 +5,7 @@ import { cn } from '@/lib/utils'
 import type { LineupPlayer, SeasonStats } from '@/types'
 import RadarStatsChart, { type PlayerStats } from './RadarStatsChart'
 import { POS_COLOR, POS_LABEL } from './PlayerMarker'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+import { API_BASE } from '@/lib/config'
 
 // ── 시즌 통계 집계 → 레이더 스탯 변환 ────────────────────────────────
 // 여러 리그 통계를 합산하여 0-100 척도로 정규화

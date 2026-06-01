@@ -3,33 +3,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import type { MatchSummary } from '@/types'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
-
-function StatusBadge({ status, elapsed }: { status: string | null; elapsed: number | null }) {
-  if (!status) return null
-  const live = ['1H', '2H', 'ET', 'BT', 'P', 'INT'].includes(status)
-  const finished = ['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(status)
-
-  if (live) return (
-    <span className="inline-flex items-center gap-1 text-xs font-bold text-green-400 bg-green-400/10 border border-green-400/30 px-2 py-0.5 rounded-full">
-      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-      {elapsed != null ? `${elapsed}'` : '진행중'}
-    </span>
-  )
-  if (finished) return (
-    <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">종료</span>
-  )
-  if (status === 'HT') return (
-    <span className="text-xs font-bold text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 px-2 py-0.5 rounded-full">HT</span>
-  )
-  return null
-}
+import { API_BASE } from '@/lib/config'
+import TeamLogo from '@/components/ui/TeamLogo'
+import PageHeader from '@/components/ui/PageHeader'
+import StatusBadge from '@/components/match/StatusBadge'
+import { isLive as isLiveStatus, isFinished as isFinishedStatus } from '@/lib/matchStatus'
+import { formatMatchDateShort, formatMatchTime } from '@/lib/format'
 
 function MatchCard({ match }: { match: MatchSummary }) {
   const date = match.matchDate ? new Date(match.matchDate) : null
-  const isFinished = match.statusShort && ['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(match.statusShort)
-  const isLive = match.statusShort && ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'INT'].includes(match.statusShort)
+  const isFinished = isFinishedStatus(match.statusShort)
+  const isLive = isLiveStatus(match.statusShort) || match.statusShort === 'HT'
   const hasScore = match.home.goals != null || match.away.goals != null
 
   return (
@@ -42,10 +26,10 @@ function MatchCard({ match }: { match: MatchSummary }) {
         {date ? (
           <>
             <p className="text-xs text-muted-foreground">
-              {date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+              {formatMatchDateShort(match.matchDate)}
             </p>
             <p className="text-xs font-semibold">
-              {date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
+              {formatMatchTime(match.matchDate)}
             </p>
           </>
         ) : (
@@ -59,9 +43,7 @@ function MatchCard({ match }: { match: MatchSummary }) {
           isFinished && (match.home.goals ?? 0) > (match.away.goals ?? 0)
             ? 'text-foreground' : 'text-muted-foreground',
         ].join(' ')}>{match.home.name ?? '-'}</span>
-        {match.home.logo
-          ? <img src={match.home.logo} alt="" className="w-7 h-7 object-contain flex-shrink-0" /> // eslint-disable-line @next/next/no-img-element
-          : <div className="w-7 h-7 rounded bg-muted flex-shrink-0" />}
+        <TeamLogo src={match.home.logo} className="w-7 h-7 flex-shrink-0" />
       </div>
 
       {/* 스코어 */}
@@ -85,9 +67,7 @@ function MatchCard({ match }: { match: MatchSummary }) {
 
       {/* 어웨이팀 */}
       <div className="flex-1 flex items-center gap-2 min-w-0">
-        {match.away.logo
-          ? <img src={match.away.logo} alt="" className="w-7 h-7 object-contain flex-shrink-0" /> // eslint-disable-line @next/next/no-img-element
-          : <div className="w-7 h-7 rounded bg-muted flex-shrink-0" />}
+        <TeamLogo src={match.away.logo} className="w-7 h-7 flex-shrink-0" />
         <span className={['font-semibold text-sm truncate',
           isFinished && (match.away.goals ?? 0) > (match.home.goals ?? 0)
             ? 'text-foreground' : 'text-muted-foreground',
@@ -133,13 +113,11 @@ export default function MatchesPage() {
 
   return (
     <div className="wrap space-y-10 py-8 max-w-4xl mx-auto">
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">경기 일정</p>
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-          &#x1F3DF;&#xFE0F; 경기 일정
-        </h1>
-        <p className="text-muted-foreground text-sm">2026 FIFA 월드컵 &middot; 미국 / 캐나다 / 멕시코</p>
-      </div>
+      <PageHeader
+        eyebrow="경기 일정"
+        title={<>🏟️ 경기 일정</>}
+        subtitle="2026 FIFA 월드컵 · 미국 / 캐나다 / 멕시코"
+      />
 
       {/* 로딩 */}
       {loading && (

@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import type { Country } from '@/types'
+import CountryFlag from '@/components/ui/CountryFlag'
+import PageHeader from '@/components/ui/PageHeader'
 
 export const metadata: Metadata = {
   title: '2026 월드컵 전체 스쿼드 — 32개국 참가국 명단',
@@ -36,13 +38,11 @@ export default async function SquadsPage() {
   return (
     <div className="wrap space-y-10 py-8">
       {/* 페이지 헤더 */}
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">2026 FIFA World Cup</p>
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">전체 스쿼드</h1>
-        <p className="text-muted-foreground">
-          참가국을 선택하면 해당 국가의 스쿼드를 확인할 수 있습니다.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="2026 FIFA World Cup"
+        title="전체 스쿼드"
+        subtitle="참가국을 선택하면 해당 국가의 스쿼드를 확인할 수 있습니다."
+      />
 
       {/* 국가 목록 */}
       {countries.length > 0 ? (
@@ -65,18 +65,13 @@ export default async function SquadsPage() {
                   href={`/squads/${country.code.toLowerCase()}`}
                   className="group flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/60 hover:bg-primary/5 transition-all"
                 >
-                  {country.flagUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={country.flagUrl}
-                      alt={`${country.name} 국기`}
-                      className="w-11 h-7 object-cover rounded shadow-sm flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-11 h-7 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground flex-shrink-0">
-                      {country.code}
-                    </div>
-                  )}
+                  <CountryFlag
+                    src={country.flagUrl}
+                    code={country.code}
+                    name={country.name}
+                    className="w-11 h-7 rounded shadow-sm flex-shrink-0"
+                    textClassName="text-xs text-muted-foreground"
+                  />
                   <div className="min-w-0">
                     <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
                       {country.name}

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { StatsRanking } from '@/types'
 import { playerSlug } from '@/lib/utils'
+import PlayerAvatar from '@/components/ui/PlayerAvatar'
 
 type StatMode = 'goals' | 'assists'
 
@@ -62,18 +63,12 @@ export default function StatsRankingTable({ rankings, mode }: Props) {
                       href={`/players/${playerSlug(p.playerId, p.playerName)}`}
                       className="flex items-center gap-2.5 hover:text-primary transition-colors"
                     >
-                      {p.photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.photoUrl}
-                          alt={p.playerName}
-                          className="w-9 h-9 rounded-full object-cover flex-shrink-0 border border-border"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold flex-shrink-0">
-                          {p.playerName.charAt(0)}
-                        </div>
-                      )}
+                      <PlayerAvatar
+                        src={p.photoUrl}
+                        name={p.playerName}
+                        className="w-9 h-9 rounded-full flex-shrink-0 border border-border"
+                        textClassName="text-xs"
+                      />
                       <span className="font-semibold">{p.playerName}</span>
                     </Link>
                   </td>
