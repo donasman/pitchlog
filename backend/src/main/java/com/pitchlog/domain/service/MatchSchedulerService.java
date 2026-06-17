@@ -4,7 +4,6 @@ import com.pitchlog.batch.dto.ApiFootballFixturesResponse;
 import com.pitchlog.batch.dto.ApiFootballLineupsResponse;
 import com.pitchlog.batch.dto.ApiFootballStandingsResponse;
 import com.pitchlog.batch.step.FetchInjuriesStep;
-import com.pitchlog.batch.step.FetchOddsStep;
 import com.pitchlog.batch.step.FetchPlayerRatingsStep;
 import com.pitchlog.batch.step.FetchPredictionsStep;
 import com.pitchlog.batch.step.FetchStandingsStep;
@@ -43,7 +42,6 @@ public class MatchSchedulerService {
     private final FetchInjuriesStep fetchInjuriesStep;
     private final FetchPlayerRatingsStep fetchPlayerRatingsStep;
     private final FetchPredictionsStep fetchPredictionsStep;
-    private final FetchOddsStep fetchOddsStep;
 
     @Value("${api-football.wc-league-id:1}")
     private Integer leagueId;
@@ -151,20 +149,6 @@ public class MatchSchedulerService {
             log.debug("[Scheduler] Predictions 갱신 완료");
         } catch (Exception e) {
             log.error("[Scheduler] Predictions 갱신 실패: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * 6시간마다 다가오는 경기 배당(Odds)을 갱신한다.
-     * 이미 저장된 경기는 스킵 — 배당은 경기 시작 전에만 의미 있음.
-     */
-    @Scheduled(fixedDelay = 21_600_000) // 6시간
-    public void refreshOdds() {
-        try {
-            fetchOddsStep.fetchAndRefresh();
-            log.debug("[Scheduler] Odds 갱신 완료");
-        } catch (Exception e) {
-            log.error("[Scheduler] Odds 갱신 실패: {}", e.getMessage());
         }
     }
 
