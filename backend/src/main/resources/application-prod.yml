@@ -26,6 +26,9 @@ server:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:https://pitchlog.com}
 
+api-football:
+  squad-max-pages: -1   # 전체 페이지 수집 (배치 완료 후 제거 예정)
+
 logging:
   level:
     com.pitchlog: INFO
