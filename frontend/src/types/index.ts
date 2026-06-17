@@ -146,18 +146,6 @@ export interface H2HRecord {
   leagueName: string | null
 }
 
-// ── Odds types ────────────────────────────────────────────────────────────────
-
-export interface FixtureOdds {
-  fixtureId: number
-  bookmakerId: number | null
-  bookmakerName: string | null
-  betName: string | null
-  homeOdd: string | null   // "1.85"
-  drawOdd: string | null
-  awayOdd: string | null
-}
-
 // ── Prediction types ──────────────────────────────────────────────────────────
 
 export interface FixturePrediction {

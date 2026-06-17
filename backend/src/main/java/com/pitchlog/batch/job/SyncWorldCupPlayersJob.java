@@ -5,7 +5,6 @@ import com.pitchlog.batch.step.FetchCountriesStep;
 import com.pitchlog.batch.step.FetchH2HStep;
 import com.pitchlog.batch.step.FetchInjuriesStep;
 import com.pitchlog.batch.step.FetchMatchesStep;
-import com.pitchlog.batch.step.FetchOddsStep;
 import com.pitchlog.batch.step.FetchPlayerRatingsStep;
 import com.pitchlog.batch.step.FetchPlayerStatsStep;
 import com.pitchlog.batch.step.FetchPredictionsStep;
@@ -33,7 +32,6 @@ public class SyncWorldCupPlayersJob {
     private final FetchPlayerRatingsStep fetchPlayerRatingsStep;
     private final FetchPredictionsStep fetchPredictionsStep;
     private final FetchH2HStep fetchH2HStep;
-    private final FetchOddsStep fetchOddsStep;
 
     /**
      * 전체 파이프라인: Step1(국가) → Step2(스쿼드) → Step3(선수통계) → Step4(경기) → Step5(순위)
@@ -53,7 +51,6 @@ public class SyncWorldCupPlayersJob {
                 .next(fetchPlayerRatingsStep.step())
                 .next(fetchPredictionsStep.step())
                 .next(fetchH2HStep.step())
-                .next(fetchOddsStep.step())
                 .build();
     }
 
@@ -75,7 +72,6 @@ public class SyncWorldCupPlayersJob {
                 .next(fetchPlayerRatingsStep.step())
                 .next(fetchPredictionsStep.step())
                 .next(fetchH2HStep.step())
-                .next(fetchOddsStep.step())
                 .build();
     }
 }

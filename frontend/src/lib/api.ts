@@ -1,4 +1,4 @@
-import type { Country, SquadResponse, PlayerDetail, StatsRanking, MatchSummary, MatchDetail, StandingGroup, PlayerInjury, Coach, FixturePrediction, FixtureOdds, H2HRecord } from '@/types'
+import type { Country, SquadResponse, PlayerDetail, StatsRanking, MatchSummary, MatchDetail, StandingGroup, PlayerInjury, Coach, FixturePrediction, H2HRecord } from '@/types'
 import { API_BASE } from './config'
 
 const BASE_URL = API_BASE
@@ -66,6 +66,4 @@ export const api = {
   getH2H: (team1: number, team2: number): Promise<H2HRecord[]> =>
     fetcher(`/api/h2h/${team1}/${team2}`),
 
-  getOdds: (fixtureId: number): Promise<FixtureOdds> =>
-    fetcher(`/api/odds/${fixtureId}`),
 }
