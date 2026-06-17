@@ -58,7 +58,7 @@ public class MatchLineupEntry {
     private boolean substitute;
 
     /** API-Football 선수 평점 (0.0 ~ 10.0) — 경기 종료 후 수집 */
-    @Column(name = "rating", precision = 4, scale = 2)
+    @Column(name = "rating")
     private Double rating;
 
     /** 출전 시간(분) */

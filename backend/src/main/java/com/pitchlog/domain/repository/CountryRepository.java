@@ -11,7 +11,7 @@ public interface CountryRepository extends JpaRepository<Country, Long> {
 
     Optional<Country> findByCodeIgnoreCase(String code);
 
-    Optional<Country> findByTeamApiId(Integer teamApiId);
+    Optional<Country> findFirstByTeamApiId(Integer teamApiId);
 
     boolean existsByCode(String code);
 }

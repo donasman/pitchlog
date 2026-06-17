@@ -103,17 +103,26 @@ public class FetchCountriesStep {
     }
 
     private void upsertCountry(String code, String name, String logoUrl, Integer teamApiId) {
-        countryRepository.findByCode(code).ifPresentOrElse(
-                existing -> {
-                    existing.update(name, logoUrl, null, teamApiId);
-                    log.debug("[FetchCountriesStep] 업데이트: {} (code={}, teamId={})",
-                            name, code, teamApiId);
-                },
-                () -> {
-                    countryRepository.save(Country.create(code, name, logoUrl, null, teamApiId));
-                    log.debug("[FetchCountriesStep] 신규 저장: {} (code={}, teamId={})",
-                            name, code, teamApiId);
-                }
-        );
+        // 1순위: code로 찾기
+        var byCode = countryRepository.findByCode(code);
+        if (byCode.isPresent()) {
+            byCode.get().update(name, logoUrl, null, teamApiId);
+            log.debug("[FetchCountriesStep] 업데이트(code): {} (code={}, teamId={})", name, code, teamApiId);
+            return;
+        }
+
+        // 2순위: team_api_id로 찾기 (code가 변경된 경우 대비)
+        if (teamApiId != null) {
+            var byTeamId = countryRepository.findFirstByTeamApiId(teamApiId);
+            if (byTeamId.isPresent()) {
+                byTeamId.get().update(name, logoUrl, null, teamApiId);
+                log.debug("[FetchCountriesStep] 업데이트(teamApiId): {} (code={}, teamId={})", name, code, teamApiId);
+                return;
+            }
+        }
+
+        // 신규 저장
+        countryRepository.save(Country.create(code, name, logoUrl, null, teamApiId));
+        log.debug("[FetchCountriesStep] 신규 저장: {} (code={}, teamId={})", name, code, teamApiId);
     }
 }

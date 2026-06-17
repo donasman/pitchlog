@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "countries", uniqueConstraints = {
-        @UniqueConstraint(name = "uq_countries_code", columnNames = "code")
+        @UniqueConstraint(name = "uq_countries_code", columnNames = "code"),
+        @UniqueConstraint(name = "uq_countries_team_api_id", columnNames = "team_api_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -139,7 +139,7 @@ public class FetchSquadsStep {
     private void upsertSquadEntry(Player player, ApiFootballPlayerStatsResponse.StatisticsDetail stat) {
         if (stat.team() == null || stat.team().id() == null) return;
 
-        countryRepository.findByTeamApiId(stat.team().id()).ifPresent(country ->
+        countryRepository.findFirstByTeamApiId(stat.team().id()).ifPresent(country ->
                 squadEntryRepository.findByPlayerIdAndCountryId(player.getId(), country.getId())
                         .ifPresentOrElse(
                                 existing -> existing.update(existing.getJerseyNumber(), existing.getPosition(), true),

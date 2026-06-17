@@ -7,9 +7,11 @@ CREATE TABLE IF NOT EXISTS countries (
     name        VARCHAR(100) NOT NULL,
     flag_url    VARCHAR(500),
     group_name  VARCHAR(10),
+    team_api_id INTEGER,
     created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_countries_code UNIQUE (code)
+    CONSTRAINT uq_countries_code UNIQUE (code),
+    CONSTRAINT uq_countries_team_api_id UNIQUE (team_api_id)
 );
 
 CREATE TABLE IF NOT EXISTS players (
