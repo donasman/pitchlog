@@ -5,7 +5,7 @@ spring:
   jpa:
     show-sql: false
     hibernate:
-      ddl-auto: update     # 최초 배포 시 테이블 자동 생성 — 배치 완료 후 validate로 복구
+      ddl-auto: validate
     defer-datasource-initialization: true
 
   sql:
@@ -25,9 +25,6 @@ server:
 # CORS — 프로덕션 도메인만 허용
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:https://pitchlog.com}
-
-api-football:
-  squad-max-pages: -1   # 전체 페이지 수집 (배치 완료 후 제거 예정)
 
 logging:
   level:
