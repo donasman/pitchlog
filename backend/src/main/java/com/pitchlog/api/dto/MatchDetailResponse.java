@@ -41,7 +41,11 @@ public record MatchDetailResponse(
             String name,
             Integer number,
             String pos,
-            String grid
+            String grid,
+            Double rating,
+            Integer minutesPlayed,
+            Integer goalsScored,
+            Integer assistsMade
     ) {}
 
     public static MatchDetailResponse from(Match m, List<MatchLineupEntry> entries) {
@@ -92,7 +96,10 @@ public record MatchDetailResponse(
     }
 
     private static LineupPlayer toLineupPlayer(MatchLineupEntry e) {
-        return new LineupPlayer(e.getPlayerApiId(), e.getPlayerName(),
-                e.getPlayerNumber(), e.getPos(), e.getGrid());
+        return new LineupPlayer(
+                e.getPlayerApiId(), e.getPlayerName(), e.getPlayerNumber(),
+                e.getPos(), e.getGrid(),
+                e.getRating(), e.getMinutesPlayed(), e.getGoalsScored(), e.getAssistsMade()
+        );
     }
 }

@@ -5,8 +5,8 @@ import StatsRankingTable from './StatsRankingTable'
 import PageHeader from '@/components/ui/PageHeader'
 
 interface StatsRankingPageProps {
-  /** 순위 기준 — 득점/도움 */
-  mode: 'goals' | 'assists'
+  /** 순위 기준 */
+  mode: 'goals' | 'assists' | 'yellowCards' | 'redCards'
   /** 제목 옆 이모지 */
   icon: string
   /** 제목 (예: "Top Scorers") */
@@ -17,8 +17,7 @@ interface StatsRankingPageProps {
 }
 
 /**
- * 득점/도움 순위 페이지의 공통 본문.
- * top-scorers·top-assists가 mode만 달라 거의 동일했던 것을 하나로 통합한다.
+ * 득점/도움/카드 순위 페이지의 공통 본문.
  */
 export default async function StatsRankingPage({
   mode,
@@ -29,7 +28,10 @@ export default async function StatsRankingPage({
 }: StatsRankingPageProps) {
   let rankings: StatsRanking[] = []
   try {
-    rankings = mode === 'goals' ? await api.getTopScorers(30) : await api.getTopAssists(30)
+    if (mode === 'goals')        rankings = await api.getTopScorers(30)
+    else if (mode === 'assists') rankings = await api.getTopAssists(30)
+    else if (mode === 'yellowCards') rankings = await api.getTopYellowCards(30)
+    else                         rankings = await api.getTopRedCards(30)
   } catch {
     // API 미응답 시 빈 목록 표시
   }

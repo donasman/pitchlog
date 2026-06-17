@@ -4,6 +4,13 @@ import { cn } from '@/lib/utils'
 import type { LineupPlayer, LineupTeam } from '@/types'
 import { POS_COLOR, POS_LABEL } from './PlayerMarker'
 
+/** 평점 → 배경색 (녹색 7.5+, 노랑 6~7.5, 회색 그 미만) */
+function ratingBg(r: number): string {
+  if (r >= 7.5) return '#16a34a'   // green
+  if (r >= 6.0) return '#ca8a04'   // yellow
+  return '#6b7280'                  // gray
+}
+
 interface Props {
   home: LineupTeam
   away: LineupTeam
@@ -56,6 +63,20 @@ function BenchPlayerRow({ player, isSelected, isHome: _isHome, onClick }: BenchP
       >
         {label}
       </span>
+
+      {/* 평점 배지 */}
+      {player.rating != null && (
+        <span style={{
+          fontSize: 10, fontWeight: 700,
+          fontFamily: 'Space Mono, monospace',
+          padding: '1px 5px', borderRadius: 4,
+          background: ratingBg(player.rating),
+          color: '#fff',
+          flexShrink: 0,
+        }}>
+          {player.rating.toFixed(1)}
+        </span>
+      )}
     </button>
   )
 }

@@ -32,4 +32,16 @@ public class PlayerController {
             @RequestParam(defaultValue = "20") int limit) {
         return ResponseEntity.ok(playerService.getTopAssists(limit));
     }
+
+    @GetMapping("/top-yellowcards")
+    public ResponseEntity<List<StatsRankingResponse>> getTopYellowCards(
+            @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(playerService.getTopYellowCards(limit));
+    }
+
+    @GetMapping("/top-redcards")
+    public ResponseEntity<List<StatsRankingResponse>> getTopRedCards(
+            @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(playerService.getTopRedCards(limit));
+    }
 }

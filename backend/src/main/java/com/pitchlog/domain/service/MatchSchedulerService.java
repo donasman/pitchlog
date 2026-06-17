@@ -2,12 +2,19 @@ package com.pitchlog.domain.service;
 
 import com.pitchlog.batch.dto.ApiFootballFixturesResponse;
 import com.pitchlog.batch.dto.ApiFootballLineupsResponse;
+import com.pitchlog.batch.dto.ApiFootballStandingsResponse;
+import com.pitchlog.batch.step.FetchInjuriesStep;
+import com.pitchlog.batch.step.FetchOddsStep;
+import com.pitchlog.batch.step.FetchPlayerRatingsStep;
+import com.pitchlog.batch.step.FetchPredictionsStep;
+import com.pitchlog.batch.step.FetchStandingsStep;
 import com.pitchlog.domain.entity.Match;
 import com.pitchlog.domain.entity.MatchLineupEntry;
 import com.pitchlog.domain.repository.MatchLineupEntryRepository;
 import com.pitchlog.domain.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,7 +25,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 월드컵 경기 중 결과/라인업을 주기적으로 갱신하는 스케줄러.
+ * 월드컵 경기 중 결과/라인업/순위를 주기적으로 갱신하는 스케줄러.
  * <p>
  * 아키텍처 원칙 준수: 외부 API는 백엔드 스케줄러에서만 호출,
  * 프론트엔드는 항상 자체 DB만 조회.
@@ -32,6 +39,17 @@ public class MatchSchedulerService {
     private final WebClient apiFootballClient;
     private final MatchRepository matchRepository;
     private final MatchLineupEntryRepository lineupEntryRepository;
+    private final FetchStandingsStep fetchStandingsStep;
+    private final FetchInjuriesStep fetchInjuriesStep;
+    private final FetchPlayerRatingsStep fetchPlayerRatingsStep;
+    private final FetchPredictionsStep fetchPredictionsStep;
+    private final FetchOddsStep fetchOddsStep;
+
+    @Value("${api-football.wc-league-id:1}")
+    private Integer leagueId;
+
+    @Value("${api-football.season:2026}")
+    private Integer season;
 
     /**
      * 5분마다 라이브/최근 경기 결과를 갱신한다.
@@ -52,6 +70,101 @@ public class MatchSchedulerService {
             } catch (Exception e) {
                 log.error("[Scheduler] Failed to refresh fixture {}: {}", match.getFixtureId(), e.getMessage());
             }
+        }
+    }
+
+    /**
+     * 10분마다 조 순위를 갱신한다.
+     * 그룹 스테이지(6/11~6/27) 경기가 끝날 때마다 순위가 바뀌므로 주기적 갱신 필요.
+     */
+    @Scheduled(fixedDelay = 600_000)    // 10분
+    @Transactional
+    public void refreshStandings() {
+        try {
+            ApiFootballStandingsResponse response = apiFootballClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/standings")
+                            .queryParam("league", leagueId)
+                            .queryParam("season", season)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(ApiFootballStandingsResponse.class)
+                    .block();
+
+            if (response == null || response.response() == null || response.response().isEmpty()) {
+                log.debug("[Scheduler] Standings: 데이터 없음");
+                return;
+            }
+
+            var leagueData = response.response().get(0).league();
+            if (leagueData == null || leagueData.standings() == null) return;
+
+            int count = 0;
+            for (var group : leagueData.standings()) {
+                for (var entry : group) {
+                    if (entry.team() == null || entry.team().id() == null) continue;
+                    fetchStandingsStep.upsertStanding(entry);
+                    count++;
+                }
+            }
+            log.debug("[Scheduler] Standings 갱신 완료 — {}개", count);
+        } catch (Exception e) {
+            log.error("[Scheduler] Standings 갱신 실패: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 30분마다 부상/출전정지 목록을 갱신한다.
+     * 전체 교체 방식 — FetchInjuriesStep.fetchAndRefresh() 위임.
+     */
+    @Scheduled(fixedDelay = 1_800_000) // 30분
+    public void refreshInjuries() {
+        try {
+            fetchInjuriesStep.fetchAndRefresh();
+            log.debug("[Scheduler] Injuries 갱신 완료");
+        } catch (Exception e) {
+            log.error("[Scheduler] Injuries 갱신 실패: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 30분마다 종료된 경기의 선수 평점을 수집한다.
+     * 이미 평점이 수집된 경기는 스킵.
+     */
+    @Scheduled(fixedDelay = 1_800_000) // 30분
+    public void refreshPlayerRatings() {
+        try {
+            fetchPlayerRatingsStep.fetchAndRefresh();
+            log.debug("[Scheduler] PlayerRatings 갱신 완료");
+        } catch (Exception e) {
+            log.error("[Scheduler] PlayerRatings 갱신 실패: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 6시간마다 다가오는 경기 예측을 갱신한다.
+     */
+    @Scheduled(fixedDelay = 21_600_000) // 6시간
+    public void refreshPredictions() {
+        try {
+            fetchPredictionsStep.fetchAndRefresh();
+            log.debug("[Scheduler] Predictions 갱신 완료");
+        } catch (Exception e) {
+            log.error("[Scheduler] Predictions 갱신 실패: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 6시간마다 다가오는 경기 배당(Odds)을 갱신한다.
+     * 이미 저장된 경기는 스킵 — 배당은 경기 시작 전에만 의미 있음.
+     */
+    @Scheduled(fixedDelay = 21_600_000) // 6시간
+    public void refreshOdds() {
+        try {
+            fetchOddsStep.fetchAndRefresh();
+            log.debug("[Scheduler] Odds 갱신 완료");
+        } catch (Exception e) {
+            log.error("[Scheduler] Odds 갱신 실패: {}", e.getMessage());
         }
     }
 

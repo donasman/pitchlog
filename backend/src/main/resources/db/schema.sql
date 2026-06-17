@@ -106,6 +106,10 @@ CREATE TABLE IF NOT EXISTS match_lineup_entries (
     pos             VARCHAR(3),
     grid            VARCHAR(10),
     is_substitute   BOOLEAN      NOT NULL DEFAULT FALSE,
+    rating          DECIMAL(4,2),
+    minutes_played  INTEGER,
+    goals_scored    INTEGER,
+    assists_made    INTEGER,
     updated_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_match_lineup UNIQUE (fixture_id, player_api_id, team_api_id)
 );
@@ -123,6 +127,59 @@ CREATE TABLE IF NOT EXISTS admin_users (
     CONSTRAINT uq_admin_users_username UNIQUE (username)
 );
 
+CREATE TABLE IF NOT EXISTS group_standings (
+    id              BIGSERIAL    PRIMARY KEY,
+    group_name      VARCHAR(20)  NOT NULL,
+    team_api_id     INTEGER      NOT NULL,
+    team_name       VARCHAR(100) NOT NULL,
+    team_logo       VARCHAR(500),
+    rank            INTEGER      NOT NULL,
+    played          INTEGER,
+    win             INTEGER,
+    draw            INTEGER,
+    lose            INTEGER,
+    goals_for       INTEGER,
+    goals_against   INTEGER,
+    goals_diff      INTEGER,
+    points          INTEGER,
+    form            VARCHAR(10),
+    description     VARCHAR(100),
+    updated_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_group_standings_team UNIQUE (team_api_id)
+);
+
+CREATE TABLE IF NOT EXISTS player_injuries (
+    id              BIGSERIAL    PRIMARY KEY,
+    player_api_id   INTEGER      NOT NULL,
+    player_name     VARCHAR(100) NOT NULL,
+    player_photo    VARCHAR(500),
+    team_api_id     INTEGER,
+    team_name       VARCHAR(100),
+    team_logo       VARCHAR(500),
+    fixture_id      INTEGER,
+    fixture_date    TIMESTAMP,
+    injury_type     VARCHAR(100),
+    reason          VARCHAR(100),
+    updated_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_player_injuries UNIQUE (player_api_id, fixture_id)
+);
+
+CREATE TABLE IF NOT EXISTS coaches (
+    id              BIGSERIAL    PRIMARY KEY,
+    coach_api_id    INTEGER,
+    team_api_id     INTEGER      NOT NULL,
+    team_name       VARCHAR(100),
+    team_logo       VARCHAR(500),
+    name            VARCHAR(100) NOT NULL,
+    first_name      VARCHAR(50),
+    last_name       VARCHAR(50),
+    nationality     VARCHAR(100),
+    birth_date      VARCHAR(20),
+    photo_url       VARCHAR(500),
+    updated_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_coaches_team UNIQUE (team_api_id)
+);
+
 -- Spring Batch 메타데이터 테이블은 spring.batch.jdbc.initialize-schema=always 로 자동 생성
 
 -- 인덱스
@@ -132,3 +189,56 @@ CREATE INDEX IF NOT EXISTS idx_player_season_stats_goals ON player_season_stats(
 CREATE INDEX IF NOT EXISTS idx_player_season_stats_assists ON player_season_stats(assists DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS idx_matches_match_date ON matches(match_date);
 CREATE INDEX IF NOT EXISTS idx_match_lineup_fixture ON match_lineup_entries(fixture_id);
+CREATE INDEX IF NOT EXISTS idx_group_standings_group ON group_standings(group_name, rank);
+CREATE INDEX IF NOT EXISTS idx_player_injuries_fixture_date ON player_injuries(fixture_date);
+CREATE INDEX IF NOT EXISTS idx_player_injuries_team ON player_injuries(team_api_id);
+CREATE INDEX IF NOT EXISTS idx_coaches_team ON coaches(team_api_id);
+
+CREATE TABLE IF NOT EXISTS fixture_predictions (
+    id              BIGSERIAL    PRIMARY KEY,
+    fixture_id      INTEGER      NOT NULL,
+    winner_team     VARCHAR(20),
+    winner_comment  VARCHAR(300),
+    home_win_pct    VARCHAR(10),
+    draw_pct        VARCHAR(10),
+    away_win_pct    VARCHAR(10),
+    goals_home      VARCHAR(10),
+    goals_away      VARCHAR(10),
+    advice          VARCHAR(300),
+    updated_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_fixture_predictions UNIQUE (fixture_id)
+);
+
+CREATE TABLE IF NOT EXISTS h2h_records (
+    id                  BIGSERIAL    PRIMARY KEY,
+    fixture_id          INTEGER      NOT NULL,
+    team_pair           VARCHAR(30)  NOT NULL,
+    home_team_api_id    INTEGER,
+    home_team_name      VARCHAR(100),
+    home_team_logo      VARCHAR(500),
+    away_team_api_id    INTEGER,
+    away_team_name      VARCHAR(100),
+    away_team_logo      VARCHAR(500),
+    home_goals          INTEGER,
+    away_goals          INTEGER,
+    match_date          TIMESTAMP,
+    status_short        VARCHAR(10),
+    league_name         VARCHAR(100),
+    updated_at          TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_h2h_records UNIQUE (fixture_id)
+);
+CREATE INDEX IF NOT EXISTS idx_h2h_records_team_pair ON h2h_records(team_pair);
+
+CREATE TABLE IF NOT EXISTS fixture_odds (
+    id              BIGSERIAL    PRIMARY KEY,
+    fixture_id      INTEGER      NOT NULL,
+    bookmaker_id    INTEGER,
+    bookmaker_name  VARCHAR(50),
+    bet_name        VARCHAR(100),
+    home_odd        VARCHAR(20),
+    draw_odd        VARCHAR(20),
+    away_odd        VARCHAR(20),
+    updated_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_fixture_odds UNIQUE (fixture_id)
+);
+CREATE INDEX IF NOT EXISTS idx_fixture_odds_fixture ON fixture_odds(fixture_id);

@@ -28,7 +28,9 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
                   p.nationality AS nationality,
                   COALESCE(SUM(s.goals),       0) AS goals,
                   COALESCE(SUM(s.assists),     0) AS assists,
-                  COALESCE(SUM(s.appearances), 0) AS appearances
+                  COALESCE(SUM(s.appearances), 0) AS appearances,
+                  COALESCE(SUM(s.yellowCards), 0) AS yellowCards,
+                  COALESCE(SUM(s.redCards),    0) AS redCards
            FROM PlayerSeasonStats s
            JOIN s.player p
            WHERE EXISTS (
@@ -48,5 +50,7 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
         int    getGoals();
         int    getAssists();
         int    getAppearances();
+        int    getYellowCards();
+        int    getRedCards();
     }
 }

@@ -12,4 +12,7 @@ public interface MatchLineupEntryRepository extends JpaRepository<MatchLineupEnt
     boolean existsByFixtureId(Integer fixtureId);
 
     void deleteByFixtureId(Integer fixtureId);
+
+    /** 경기별 선수 평점 업데이트용 */
+    java.util.Optional<MatchLineupEntry> findByFixtureIdAndPlayerApiId(Integer fixtureId, Integer playerApiId);
 }

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import { positionLabel, playerSlug, formatBirthDate } from '@/lib/utils'
-import type { SquadResponse } from '@/types'
+import type { Coach, SquadResponse } from '@/types'
 import EmptyState from '@/components/ui/EmptyState'
 import PlayerAvatar from '@/components/ui/PlayerAvatar'
 import CountryFlag from '@/components/ui/CountryFlag'
@@ -57,6 +57,8 @@ const POSITION_LABEL: Record<string, string> = {
 export default async function CountrySquadPage({ params }: Props) {
   const code = params.country.toUpperCase()
   let squad: SquadResponse | null = null
+  let coach: Coach | null = null
+
   try {
     squad = await api.getSquad(code)
   } catch {
@@ -79,6 +81,12 @@ export default async function CountrySquadPage({ params }: Props) {
         backLabel="Back to Squads"
       />
     )
+
+  try {
+    coach = await api.getCoachByCountry(code)
+  } catch {
+    // 감독 데이터 없으면 null
+  }
 
   const byPosition = POSITION_ORDER.reduce<Record<string, typeof squad.players>>((acc, pos) => {
     acc[pos] = squad!.players.filter((p) => p.position === pos)
@@ -107,6 +115,52 @@ export default async function CountrySquadPage({ params }: Props) {
           </p>
         </div>
       </div>
+
+      {/* 감독 카드 */}
+      {coach && (
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-xs font-bold tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded">
+              COACH
+            </span>
+            <h2 className="text-base font-bold">감독</h2>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 16,
+            padding: '18px 20px',
+            border: '1px solid var(--line)',
+            borderRadius: 16,
+            background: 'var(--surface)',
+            maxWidth: 420,
+          }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 14,
+              overflow: 'hidden', flexShrink: 0,
+              background: 'var(--line)',
+            }}>
+              {coach.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coach.photoUrl} alt={coach.name} width={64} height={64}
+                  style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+              ) : (
+                <div style={{
+                  width: '100%', height: '100%', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', fontSize: 28, color: 'var(--ink-3)',
+                }}>🧑‍💼</div>
+              )}
+            </div>
+            <div>
+              <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink-1)', margin: 0 }}>
+                {coach.name}
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>
+                {[coach.nationality, coach.birthDate].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {POSITION_ORDER.map((pos) => {
         const players = byPosition[pos]

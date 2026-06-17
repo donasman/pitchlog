@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import { api } from '@/lib/api'
-import type { MatchDetail } from '@/types'
+import type { FixturePrediction, FixtureOdds, H2HRecord, MatchDetail } from '@/types'
 import PitchFormation from '@/components/match/PitchFormation'
+import { PredictionCard } from '@/components/match/PredictionCard'
+import { H2HSection } from '@/components/match/H2HSection'
+import { OddsAccordion } from '@/components/match/OddsAccordion'
 import EmptyState from '@/components/ui/EmptyState'
 import TeamLogo from '@/components/ui/TeamLogo'
 import BackLink from '@/components/ui/BackLink'
@@ -51,6 +54,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MatchDetailPage({ params }: Props) {
   let match: MatchDetail | null = null
+  let prediction: FixturePrediction | null = null
+  let odds: FixtureOdds | null = null
+  let h2hRecords: H2HRecord[] = []
+
   try {
     match = await api.getMatch(Number(params.fixtureId))
   } catch {
@@ -72,6 +79,29 @@ export default async function MatchDetailPage({ params }: Props) {
         backLabel="Back to Schedule"
       />
     )
+
+  // 미래 경기이면 예측/배당 데이터 로드
+  if (match.statusShort === 'NS') {
+    try {
+      prediction = await api.getPrediction(match.fixtureId)
+    } catch {
+      // 예측 없으면 null
+    }
+    try {
+      odds = await api.getOdds(match.fixtureId)
+    } catch {
+      // 배당 없으면 null
+    }
+  }
+
+  // H2H 기록 로드
+  if (match.home.teamApiId && match.away.teamApiId) {
+    try {
+      h2hRecords = await api.getH2H(match.home.teamApiId, match.away.teamApiId)
+    } catch {
+      // H2H 없으면 빈 배열
+    }
+  }
 
   const isFinished = isFinishedStatus(match.statusShort)
   const hasStarted  = match.statusShort !== 'NS'
@@ -151,6 +181,19 @@ export default async function MatchDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {/* 예측 카드 (경기 시작 전) */}
+      {prediction && match.statusShort === 'NS' && (
+        <PredictionCard prediction={prediction} match={match} />
+      )}
+
+      {/* H2H 기록 */}
+      <H2HSection records={h2hRecords} homeTeamApiId={match.home.teamApiId} />
+
+      {/* 배당 (경기 시작 전) */}
+      {odds && match.statusShort === 'NS' && (
+        <OddsAccordion odds={odds} match={match} />
+      )}
 
       {/* 라인업 */}
       {hasLineup ? (

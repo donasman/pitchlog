@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/rjsgm/Desktop/worldcup_project/pitchlog/pitchlog/**)",
+      "Bash(gh pr create --title 'feat\\(api\\): Admin Match 관리 기능 추가 \\(backend + frontend\\)' --body ' *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

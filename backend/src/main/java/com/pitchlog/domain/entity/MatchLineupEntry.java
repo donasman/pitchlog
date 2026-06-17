@@ -57,6 +57,22 @@ public class MatchLineupEntry {
     @Column(name = "is_substitute", nullable = false)
     private boolean substitute;
 
+    /** API-Football 선수 평점 (0.0 ~ 10.0) — 경기 종료 후 수집 */
+    @Column(name = "rating", precision = 4, scale = 2)
+    private Double rating;
+
+    /** 출전 시간(분) */
+    @Column(name = "minutes_played")
+    private Integer minutesPlayed;
+
+    /** 골 수 */
+    @Column(name = "goals_scored")
+    private Integer goalsScored;
+
+    /** 도움 수 */
+    @Column(name = "assists_made")
+    private Integer assistsMade;
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -76,5 +92,12 @@ public class MatchLineupEntry {
         e.grid = grid;
         e.substitute = substitute;
         return e;
+    }
+
+    public void updateStats(Double rating, Integer minutesPlayed, Integer goalsScored, Integer assistsMade) {
+        this.rating       = rating;
+        this.minutesPlayed = minutesPlayed;
+        this.goalsScored  = goalsScored;
+        this.assistsMade  = assistsMade;
     }
 }

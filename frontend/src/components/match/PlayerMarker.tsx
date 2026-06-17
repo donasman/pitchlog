@@ -91,6 +91,28 @@ export default function PlayerMarker({ player, isSelected, onClick }: Props) {
       >
         {lastName.length > 9 ? lastName.slice(0, 8) + '.' : lastName}
       </text>
+
+      {/* 평점 (경기 종료 후 표시) */}
+      {player.rating != null && (
+        <>
+          <rect
+            x={-11} y={R + 16} width={22} height={11}
+            rx={3} ry={3}
+            fill={player.rating >= 7.5 ? '#16a34a' : player.rating >= 6.0 ? '#ca8a04' : '#6b7280'}
+            opacity={0.95}
+          />
+          <text
+            y={R + 24}
+            textAnchor="middle"
+            fontSize={7.5}
+            fontWeight="800"
+            fill="#fff"
+            style={{ userSelect: 'none', pointerEvents: 'none', fontFamily: 'Space Mono, monospace' }}
+          >
+            {player.rating.toFixed(1)}
+          </text>
+        </>
+      )}
     </g>
   )
 }

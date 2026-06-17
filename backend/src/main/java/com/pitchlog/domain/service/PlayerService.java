@@ -48,4 +48,24 @@ public class PlayerService {
                 .limit(limit)
                 .toList();
     }
+
+    /** 전 리그 합산 경고 누적 기준 상위 선수 목록 */
+    public List<StatsRankingResponse> getTopYellowCards(int limit) {
+        return playerSeasonStatsRepository.aggregateStatsByActivePlayers()
+                .stream()
+                .map(StatsRankingResponse::from)
+                .sorted(Comparator.comparingInt(StatsRankingResponse::yellowCards).reversed())
+                .limit(limit)
+                .toList();
+    }
+
+    /** 전 리그 합산 퇴장 기준 상위 선수 목록 */
+    public List<StatsRankingResponse> getTopRedCards(int limit) {
+        return playerSeasonStatsRepository.aggregateStatsByActivePlayers()
+                .stream()
+                .map(StatsRankingResponse::from)
+                .sorted(Comparator.comparingInt(StatsRankingResponse::redCards).reversed())
+                .limit(limit)
+                .toList();
+    }
 }

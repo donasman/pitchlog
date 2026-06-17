@@ -3,7 +3,7 @@ import type { StatsRanking } from '@/types'
 import { playerSlug } from '@/lib/utils'
 import PlayerAvatar from '@/components/ui/PlayerAvatar'
 
-type StatMode = 'goals' | 'assists'
+type StatMode = 'goals' | 'assists' | 'yellowCards' | 'redCards'
 
 interface Props {
   rankings: StatsRanking[]
@@ -17,10 +17,10 @@ const rankBadgeClass = (i: number) => {
 }
 
 export default function StatsRankingTable({ rankings, mode }: Props) {
-  const primaryLabel = mode === 'goals' ? 'Goals' : 'Assists'
-  const secondaryLabel = mode === 'goals' ? 'Assists' : 'Goals'
-  const primaryValue = (p: StatsRanking) => mode === 'goals' ? p.goals : p.assists
-  const secondaryValue = (p: StatsRanking) => mode === 'goals' ? p.assists : p.goals
+  const primaryLabel   = mode === 'goals' ? 'Goals' : mode === 'assists' ? 'Assists' : mode === 'yellowCards' ? '🟨 경고' : '🟥 퇴장'
+  const secondaryLabel = mode === 'goals' ? 'Assists' : mode === 'assists' ? 'Goals' : mode === 'yellowCards' ? '🟥 퇴장' : '🟨 경고'
+  const primaryValue   = (p: StatsRanking) => mode === 'goals' ? p.goals : mode === 'assists' ? p.assists : mode === 'yellowCards' ? p.yellowCards : p.redCards
+  const secondaryValue = (p: StatsRanking) => mode === 'goals' ? p.assists : mode === 'assists' ? p.goals : mode === 'yellowCards' ? p.redCards : p.yellowCards
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">
