@@ -98,7 +98,7 @@ public class FetchOddsStep {
 
         // Bet365 북메이커 찾기
         var bookmaker = item.bookmakers().stream()
-                .filter(b -> BOOKMAKER_BET365.equals(b.id()))
+                .filter(b -> Integer.valueOf(BOOKMAKER_BET365).equals(b.id()))
                 .findFirst()
                 .orElse(null);
         if (bookmaker == null) return false;

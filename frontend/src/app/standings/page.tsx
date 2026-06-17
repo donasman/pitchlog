@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { api } from '@/lib/api'
 import { StandingsPage } from '@/components/standings/StandingsPage'
+import type { StandingGroup } from '@/types'
 
 export const metadata: Metadata = {
   title: '2026 월드컵 조별 순위',
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 }
 
 export default async function Page() {
-  let groups = []
+  let groups: StandingGroup[] = []
   try {
     groups = await api.getStandings()
   } catch {
