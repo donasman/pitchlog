@@ -69,6 +69,7 @@ export default function StatsRankingTable({ rankings, mode }: Props) {
                     <Link
                       href={`/players/${playerSlug(p.playerId, p.playerName)}`}
                       className="flex items-center gap-2.5 hover:text-primary transition-colors"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <PlayerAvatar
                         src={p.photoUrl}
@@ -86,4 +87,15 @@ export default function StatsRankingTable({ rankings, mode }: Props) {
                   <td className="py-3 pr-4 text-right font-bold text-primary text-base">
                     {primaryValue(p) ?? '-'}
                   </td>
-                  <td 
+                  <td className="py-3 pr-4 text-right text-muted-foreground">
+                    {secondaryValue(p) ?? '-'}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
