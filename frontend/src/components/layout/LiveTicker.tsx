@@ -69,8 +69,8 @@ export default function LiveTicker() {
     <div className="ticker-track">
       {doubled.map((item, i) => {
         const { match, kind } = item
-        const homeAbbr = abbr(match.home.name)
-        const awayAbbr = abbr(match.away.name)
+        const homeAbbr = abbr(match.home.name ?? '')
+        const awayAbbr = abbr(match.away.name ?? '')
 
         return (
           <Link
