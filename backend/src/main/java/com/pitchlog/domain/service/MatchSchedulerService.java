@@ -50,24 +50,51 @@ public class MatchSchedulerService {
     private Integer season;
 
     /**
-     * 5분마다 라이브/최근 경기 결과를 갱신한다.
-     * 월드컵 기간(2026.06.11 ~ 2026.07.19)에만 실질적으로 동작.
+     * 5분마다 라이브 경기 결과를 갱신한다.
+     * live=all API로 현재 진행 중인 모든 경기를 1콜로 조회 — 경기당 1콜 방식 대비 콜 절약.
+     * 경기가 없을 때는 API 응답이 empty → DB 갱신 없음.
      */
     @Scheduled(fixedDelay = 300_000)   // 5분
     @Transactional
     public void refreshLiveMatchResults() {
-        LocalDateTime since = LocalDateTime.now().minusHours(2);
-        List<Match> activeMatches = matchRepository.findActiveOrRecentMatches(since);
+        try {
+            ApiFootballFixturesResponse response = apiFootballClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/fixtures")
+                            .queryParam("league", leagueId)
+                            .queryParam("season", season)
+                            .queryParam("live", "all")
+                            .build())
+                    .retrieve()
+                    .bodyToMono(ApiFootballFixturesResponse.class)
+                    .block();
 
-        if (activeMatches.isEmpty()) return;
-
-        log.info("[Scheduler] Refreshing {} active/recent matches", activeMatches.size());
-        for (Match match : activeMatches) {
-            try {
-                refreshFixture(match.getFixtureId());
-            } catch (Exception e) {
-                log.error("[Scheduler] Failed to refresh fixture {}: {}", match.getFixtureId(), e.getMessage());
+            if (response == null || response.response() == null || response.response().isEmpty()) {
+                log.debug("[Scheduler] No live matches");
+                return;
             }
+
+            log.info("[Scheduler] Refreshing {} live matches (1 API call)", response.response().size());
+            for (var item : response.response()) {
+                try {
+                    Integer fixtureId = item.fixture().id();
+                    var status = item.fixture().status();
+                    var goals  = item.goals();
+                    matchRepository.findByFixtureId(fixtureId).ifPresent(match ->
+                            match.updateResult(
+                                    status.shortCode(),
+                                    status.longDesc(),
+                                    status.elapsed(),
+                                    goals != null ? goals.home() : null,
+                                    goals != null ? goals.away() : null
+                            )
+                    );
+                } catch (Exception e) {
+                    log.error("[Scheduler] Failed to update fixture {}: {}", item.fixture().id(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("[Scheduler] Live match refresh failed: {}", e.getMessage());
         }
     }
 

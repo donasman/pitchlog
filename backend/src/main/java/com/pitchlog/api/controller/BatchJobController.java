@@ -2,14 +2,21 @@ package com.pitchlog.api.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 배치 잡 수동 실행 API
@@ -27,6 +34,8 @@ import java.util.Map;
 public class BatchJobController {
 
     private final JobLauncher jobLauncher;
+    private final JobOperator jobOperator;
+    private final JobExplorer jobExplorer;
     private final Job syncWorldCupPlayers;
     private final Job syncWorldCupPlayersLite;
     private final Job syncFinalSquad;
@@ -58,6 +67,55 @@ public class BatchJobController {
     @PostMapping("/sync-final-squad")
     public ResponseEntity<Map<String, String>> syncFinalSquad() {
         return runJob(syncFinalSquad, "syncFinalSquadJob");
+    }
+
+    /**
+     * syncWorldCupPlayersJob 재시작 — 429 등으로 중단된 경우 Step3부터 이어서 실행.
+     * Spring Batch가 COMPLETED Step은 건너뛰고 FAILED Step부터 재개한다.
+     *
+     * 사용 예:
+     *   POST http://localhost:8080/api/batch/restart-sync-players
+     */
+    @PostMapping("/restart-sync-players")
+    public ResponseEntity<Map<String, String>> restartSyncPlayers() {
+        try {
+            List<JobInstance> instances = jobExplorer.getJobInstances("syncWorldCupPlayersJob", 0, 10);
+            if (instances.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "NOT_FOUND",
+                        "message", "syncWorldCupPlayersJob 실행 이력이 없습니다. 먼저 /sync-players를 실행하세요."
+                ));
+            }
+
+            // 가장 최근 FAILED 실행 찾기
+            Optional<JobExecution> failedExecution = instances.stream()
+                    .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
+                    .filter(exec -> exec.getStatus() == BatchStatus.FAILED)
+                    .findFirst();
+
+            if (failedExecution.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "NO_FAILED_JOB",
+                        "message", "재시작할 FAILED 상태의 Job이 없습니다."
+                ));
+            }
+
+            long executionId = failedExecution.get().getId();
+            log.info("[BatchJobController] syncWorldCupPlayersJob 재시작 요청 (executionId={})", executionId);
+            Long newExecutionId = jobOperator.restart(executionId);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "RESTARTED",
+                    "message", "Job이 재시작됐습니다. 완료된 Step은 건너뜁니다.",
+                    "newExecutionId", String.valueOf(newExecutionId)
+            ));
+        } catch (Exception e) {
+            log.error("[BatchJobController] syncWorldCupPlayersJob 재시작 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "FAILED",
+                    "message", e.getMessage()
+            ));
+        }
     }
 
     // ─── 공통 헬퍼 ────────────────────────────────────────────────────────────
