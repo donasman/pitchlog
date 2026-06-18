@@ -1,3 +1,5 @@
+'use client'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { StatsRanking } from '@/types'
 import { playerSlug } from '@/lib/utils'
@@ -17,6 +19,7 @@ const rankBadgeClass = (i: number) => {
 }
 
 export default function StatsRankingTable({ rankings, mode }: Props) {
+  const router = useRouter()
   const primaryLabel   = mode === 'goals' ? 'Goals' : mode === 'assists' ? 'Assists' : mode === 'yellowCards' ? '🟨 경고' : '🟥 퇴장'
   const secondaryLabel = mode === 'goals' ? 'Assists' : mode === 'assists' ? 'Goals' : mode === 'yellowCards' ? '🟥 퇴장' : '🟨 경고'
   const primaryValue   = (p: StatsRanking) => mode === 'goals' ? p.goals : mode === 'assists' ? p.assists : mode === 'yellowCards' ? p.yellowCards : p.redCards
@@ -45,7 +48,11 @@ export default function StatsRankingTable({ rankings, mode }: Props) {
               </tr>
             ) : (
               rankings.map((p, i) => (
-                <tr key={p.playerId} className="hover:bg-muted/30 transition-colors">
+                <tr
+                  key={p.playerId}
+                  className="hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/players/${playerSlug(p.playerId, p.playerName)}`)}
+                >
                   <td className="py-3 pl-4 pr-2 text-muted-foreground font-medium">
                     {i < 3 ? (
                       <span className={[
@@ -79,15 +86,4 @@ export default function StatsRankingTable({ rankings, mode }: Props) {
                   <td className="py-3 pr-4 text-right font-bold text-primary text-base">
                     {primaryValue(p) ?? '-'}
                   </td>
-                  <td className="py-3 pr-4 text-right text-muted-foreground">
-                    {secondaryValue(p) ?? '-'}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
+                  <td 
