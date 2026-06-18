@@ -113,9 +113,29 @@ public class FetchPlayerStatsStep {
                     .bodyToMono(ApiFootballPlayerStatsResponse.class)
                     .block();
 
+            // 현재 시즌 응답 없으면 이전 시즌으로 fallback (은퇴/미소속 선수 기본정보 보완)
             if (response == null || response.response() == null || response.response().isEmpty()) {
-                log.warn("[FetchPlayerStatsStep] 응답 없음: apiId={}", player.getApiPlayerId());
-                return null;
+                log.info("[FetchPlayerStatsStep] {} 시즌 응답 없음, {} 시즌으로 재시도: apiId={}",
+                        seasonYear, seasonYear - 1, player.getApiPlayerId());
+                try {
+                    Thread.sleep(callIntervalMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                response = apiFootballClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/players")
+                                .queryParam("id", player.getApiPlayerId())
+                                .queryParam("season", seasonYear - 1)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(ApiFootballPlayerStatsResponse.class)
+                        .block();
+
+                if (response == null || response.response() == null || response.response().isEmpty()) {
+                    log.warn("[FetchPlayerStatsStep] 응답 없음 (fallback 포함): apiId={}", player.getApiPlayerId());
+                    return null;
+                }
             }
 
             return response.response().get(0);
