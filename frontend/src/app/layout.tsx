@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Space_Grotesk, Space_Mono } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
+import LiveTicker from '@/components/layout/LiveTicker'
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -28,15 +29,6 @@ export const metadata: Metadata = {
   },
 }
 
-const TICKER_ITEMS = [
-  { type: 'match', flag: 'mx', home: 'MEX', score: '2 – 1', away: 'NOR', time: "67'", live: true },
-  { type: 'match', flag: 'fr', home: 'FRA', score: '1 – 1', away: 'JPN', time: "53'", live: true },
-  { type: 'stat', label: '득점왕', player: 'Mbappé', stat: '6골' },
-  { type: 'match', flag: 'ar', home: 'ARG', score: '3 – 0', away: 'AUS', time: 'FT', live: false },
-  { type: 'stat', label: '도움왕', player: 'Messi', stat: '5 어시스트' },
-  { type: 'match', flag: 'pt', home: 'POR', score: '2 – 1', away: 'DEN', time: 'FT', live: false },
-  { type: 'stat', label: 'Next', player: 'ESP vs COL', stat: '21:00 KST' },
-] as const
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -61,27 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="dot" />
               Live
             </span>
-            <div className="ticker-track">
-              {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-                item.type === 'stat' ? (
-                  <span key={i} className="tk">
-                    <b>{item.label}</b> {item.player} <span className="sc">{item.stat}</span>
-                  </span>
-                ) : (
-                  <span key={i} className="tk">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`https://flagcdn.com/w80/${item.flag}.png`} alt="" width={18} height={13} style={{ objectFit: 'cover', borderRadius: 2 }} />
-                    <b>{item.home}</b>
-                    <span className="sc">{item.score}</span>
-                    <b>{item.away}</b>
-                    {item.live
-                      ? <span className="min">{item.time}</span>
-                      : <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'var(--ink-3)' }}>{item.time}</span>
-                    }
-                  </span>
-                )
-              ))}
-            </div>
+            <LiveTicker />
           </div>
 
           {/* Nav */}
