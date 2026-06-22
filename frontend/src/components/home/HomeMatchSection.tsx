@@ -16,8 +16,6 @@ function kstDateStr(iso: string): string {
 function kstTodayStr(): string { return kstDateStr(new Date().toISOString()) }
 
 // ── Smart match selection (KST) ─────────────────────────────────
-// Shows: yesterday FT + today all
-// If today all done (or no today matches): also add tomorrow NS
 function selectMatchesToShow(all: MatchSummary[]): { matches: MatchSummary[], label: string } {
   const today     = kstTodayStr()
   const now       = new Date()
@@ -32,7 +30,6 @@ function selectMatchesToShow(all: MatchSummary[]): { matches: MatchSummary[], la
     todayMatches.every(m => isFinishedStatus(m.statusShort))
 
   if (todayMatches.length === 0 && yesterdayMatches.length === 0) {
-    // No today/yesterday — show upcoming
     const upcoming = all
       .filter(m => m.matchDate && m.statusShort === 'NS')
       .sort((a, b) => new Date(a.matchDate!).getTime() - new Date(b.matchDate!).getTime())
@@ -41,16 +38,11 @@ function selectMatchesToShow(all: MatchSummary[]): { matches: MatchSummary[], la
   }
 
   const result: MatchSummary[] = []
-  // Yesterday finished
   result.push(...yesterdayMatches.filter(m => isFinishedStatus(m.statusShort)))
-  // Today all
   result.push(...todayMatches)
-  // Tomorrow if today all done
   if (todayAllDone || todayMatches.length === 0) {
     result.push(...tomorrowMatches.filter(m => m.statusShort === 'NS'))
   }
-
-  // Sort by match time
   result.sort((a, b) => {
     const ta = a.matchDate ? new Date(a.matchDate).getTime() : 0
     const tb = b.matchDate ? new Date(b.matchDate).getTime() : 0
@@ -59,7 +51,6 @@ function selectMatchesToShow(all: MatchSummary[]): { matches: MatchSummary[], la
 
   const hasLive = result.some(m => isLiveStatus(m.statusShort) || m.statusShort === 'HT')
   const label = hasLive ? '진행 중인 경기' : '오늘의 경기'
-
   return { matches: result, label }
 }
 
@@ -69,12 +60,6 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
   const isLive     = isLiveStatus(match.statusShort) || match.statusShort === 'HT'
   const hasScore   = match.home.goals != null || match.away.goals != null
 
-  const letter = (() => {
-    if (!match.groupName) return null
-    const m = match.groupName.match(/Group\s+([A-L])\b/i)
-    return m ? m[1].toUpperCase() : null
-  })()
-
   const timeStr = match.matchDate
     ? new Date(match.matchDate).toLocaleTimeString('ko-KR', {
         hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul',
@@ -83,17 +68,16 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
 
   const dayStr = match.matchDate
     ? (() => {
-        const d = new Date(match.matchDate)
-        const kstDay = new Date(d.getTime() + 9 * 60 * 60 * 1000)
-        const today = kstTodayStr()
         const mDate = kstDateStr(match.matchDate)
-        const now = new Date()
+        const now   = new Date()
+        const today     = kstTodayStr()
         const yesterday = kstDateStr(new Date(now.getTime() - 86400000).toISOString())
         const tomorrow  = kstDateStr(new Date(now.getTime() + 86400000).toISOString())
         if (mDate === today)     return '오늘'
         if (mDate === yesterday) return '어제'
         if (mDate === tomorrow)  return '내일'
-        return `${kstDay.getMonth() + 1}/${kstDay.getDate()}`
+        const d = new Date(mDate + 'T00:00:00+09:00')
+        return `${d.getMonth() + 1}/${d.getDate()}`
       })()
     : ''
 
@@ -110,17 +94,9 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
         transition: 'border-color 0.15s',
       }}
     >
-      {/* Left: day + group + time */}
-      <div style={{ width: 52, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      {/* Left: day + time */}
+      <div style={{ width: 48, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         <span style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>{dayStr}</span>
-        {letter && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 20, height: 18, borderRadius: 4,
-            background: 'var(--gold)', color: 'var(--gold-fg)',
-            fontFamily: 'Space Grotesk, sans-serif', fontWeight: 800, fontSize: 10,
-          }}>{letter}</span>
-        )}
         <span style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>{timeStr}</span>
       </div>
 
@@ -165,32 +141,32 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
 }
 
 // ── Section ─────────────────────────────────────────────────────
-const REFRESH_MS = 5 * 60 * 1000  // 5분
+const REFRESH_MS = 5 * 60 * 1000
 
 export default function HomeMatchSection() {
-  const [matches, setMatches] = useState<MatchSummary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [matches, setMatches]     = useState<MatchSummary[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [lastUpdated, setUpdated] = useState<Date | null>(null)
 
   const fetchMatches = () => {
     fetch(`${API_BASE}/api/matches`, { cache: 'no-store' })
       .then(r => r.ok ? r.json() : [])
-      .then((data) => { setMatches(data); setLastUpdated(new Date()) })
+      .then((data: MatchSummary[]) => { setMatches(data); setUpdated(new Date()) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     fetchMatches()
-    const interval = setInterval(fetchMatches, REFRESH_MS)
-    return () => clearInterval(interval)
+    const id = setInterval(fetchMatches, REFRESH_MS)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { matches: shown, label } = selectMatchesToShow(matches)
 
   return (
     <section>
-      {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <span className="eyebrow">LIVE &amp; RESULTS</span>
         {lastUpdated && (
@@ -199,10 +175,7 @@ export default function HomeMatchSection() {
           </span>
         )}
         <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-        <Link
-          href="/matches"
-          style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}
-        >
+        <Link href="/matches" style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>
           전체 보기 →
         </Link>
       </div>
@@ -234,10 +207,6 @@ export default function HomeMatchSection() {
           {shown.map((m) => <MiniMatchCard key={m.fixtureId} match={m} />)}
         </div>
       )}
-    </section>
-  )
-}
-     )}
     </section>
   )
 }
