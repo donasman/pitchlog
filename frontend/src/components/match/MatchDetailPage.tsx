@@ -230,7 +230,8 @@ export default async function MatchDetailPage({ params }: Props) {
           <p className="text-sm text-muted-foreground">
             {match.statusShort === 'NS'
               ? '라인업은 킥오프 1시간 전에 공개됩니다.'
-              : '이 경기의 라인업 데이터를 불러오지 못했습니다.'}
+              : '이 경기�의 라인업은 제공되지 않습니다.'
+            }
           </p>
         </div>
       )}

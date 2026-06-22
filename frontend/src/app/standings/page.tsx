@@ -17,11 +17,14 @@ export const metadata: Metadata = {
  * 각 조 standings 배열에 rank 3으로 삽입한다.
  *
  * 원리: 같은 경기에 출전한 팀은 같은 조 소속.
- *       Group A~L에 이미 rank 1·2·4가 있으므로, 그 팀들과 같이 경기한
- *       Group Stage 팀이 해당 조의 3위.
+ * Group Stage 팀이 이미 조가 확인된 팀과 같은 경기에 출전했다면
+ * 그 팀도 같은 조에 속한다.
  */
-function enrichWithThirdPlace(groups: StandingGroup[], matches: MatchSummary[]): StandingGroup[] {
-  // 1. Group A~L에 속한 teamApiId → groupName 매핑
+function enrichWithThirdPlace(
+  groups: StandingGroup[],
+  matches: MatchSummary[]
+): StandingGroup[] {
+  // 1. Group A-L 팀 → 조 이름 매핑 구축
   const teamToGroup = new Map<number, string>()
   for (const group of groups) {
     if (!/^Group [A-L]$/.test(group.groupName)) continue
@@ -30,57 +33,68 @@ function enrichWithThirdPlace(groups: StandingGroup[], matches: MatchSummary[]):
     }
   }
 
-  // 2. Group Stage 팀들(3위 팀)
+  // 2. Group Stage(3위 종합) 팀 목록
   const groupStage = groups.find((g) => g.groupName === 'Group Stage')
-  if (!groupStage) return groups
+  if (!groupStage || groupStage.standings.length === 0) return groups
 
-  const groupStageIds = new Set(groupStage.standings.map((s) => s.teamApiId))
+  const groupStageIds = new Set(
+    groupStage.standings.map((s) => s.teamApiId).filter((id): id is number => id != null)
+  )
 
-  // 3. 경기 데이터로 Group Stage 팀 → 조 이름 매핑
+  // 3. 경기 데이터로 Group Stage 팀의 실제 조 추론
   const gsTeamToGroup = new Map<number, string>()
   for (const match of matches) {
     const homeId = match.home?.teamApiId
     const awayId = match.away?.teamApiId
     if (homeId == null || awayId == null) continue
 
-    if (groupStageIds.has(homeId) && teamToGroup.has(awayId)) {
+    if (groupStageIds.has(homeId) && teamToGroup.has(awayId) && !gsTeamToGroup.has(homeId)) {
       gsTeamToGroup.set(homeId, teamToGroup.get(awayId)!)
     }
-    if (groupStageIds.has(awayId) && teamToGroup.has(homeId)) {
+    if (groupStageIds.has(awayId) && teamToGroup.has(homeId) && !gsTeamToGroup.has(awayId)) {
       gsTeamToGroup.set(awayId, teamToGroup.get(homeId)!)
     }
   }
 
-  // 4. 각 조에 3위 팀 rank 3으로 삽입
+  // 4. 각 조에 해당 3위 팀 삽입 (rank 3 위치에)
   const enriched = groups
-    .filter((g) => /^Group [A-L]$/.test(g.groupName))
+    .filter((g) => g.groupName !== 'Group Stage')
     .map((group) => {
-      const thirdPlace = groupStage.standings.find(
-        (s) => gsTeamToGroup.get(s.teamApiId) === group.groupName
-      )
-      if (!thirdPlace) return group
-      const withThird = [...group.standings, { ...thirdPlace, rank: 3 }]
-        .sort((a, b) => a.rank - b.rank)
-      return { ...group, standings: withThird }
+      // 이 조에 속하는 Group Stage 팀 찾기
+      const thirdPlaceEntry = groupStage.standings.find((s) => {
+        if (s.teamApiId == null) return false
+        return gsTeamToGroup.get(s.teamApiId) === group.groupName
+      })
+
+      if (!thirdPlaceEntry) return group
+
+      // rank 2 다음에 삽입
+      const standings = [...group.standings]
+      const insertIdx = standings.findIndex((s) => s.rank >= 3)
+      if (insertIdx === -1) {
+        standings.push({ ...thirdPlaceEntry, rank: 3 })
+      } else {
+        standings.splice(insertIdx, 0, { ...thirdPlaceEntry, rank: 3 })
+      }
+      return { ...group, standings }
     })
 
-  // 5. Group Stage 섹션도 유지 (하단 비교표용)
-  return [...enriched, groupStage]
+  // Group Stage(3위 종합)는 맨 뒤에 유지
+  enriched.push(groupStage)
+
+  return enriched
 }
 
-export default async function Page() {
+export default async function StandingsPageRoute() {
   let groups: StandingGroup[] = []
   let matches: MatchSummary[] = []
-  try {
-    ;[groups, matches] = await Promise.all([
-      api.getStandings(),
-      api.getMatches(),
-    ])
-  } catch {
-    // 백엔드 미연결 시 빈 상태 표시
-  }
 
-  const enrichedGroups = enrichWithThirdPlace(groups, matches)
+  await Promise.allSettled([
+    api.getStandings().then((d) => { groups = d }),
+    api.getMatches().then((d) => { matches = d }),
+  ])
 
-  return <StandingsPage groups={enrichedGroups} />
+  const enriched = enrichWithThirdPlace(groups, matches)
+
+  return <StandingsPage groups={enriched} />
 }

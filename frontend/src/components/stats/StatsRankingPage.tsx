@@ -98,7 +98,7 @@ function SourceTab({
         borderRadius: 8,
         border: active ? '1px solid var(--gold)' : '1px solid var(--line)',
         background: active ? 'var(--gold)' : 'transparent',
-        color: active ? '#0a0a0a' : 'var(--ink-2)',
+        color: active ? 'var(--gold-fg)' : 'var(--ink-2)',
         fontSize: 14,
         fontWeight: active ? 700 : 500,
         cursor: 'pointer',

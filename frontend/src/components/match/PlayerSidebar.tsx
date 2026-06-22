@@ -239,5 +239,6 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
         )}
       </aside>
     </>
-  )
+  
+)
 }

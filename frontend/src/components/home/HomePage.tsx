@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { api } from '@/lib/api'
 import type { Country, StatsRanking, MatchSummary, StandingGroup } from '@/types'
 import { playerSlug } from '@/lib/utils'
+import HomeMatchSection from '@/components/home/HomeMatchSection'
 
 export async function generateMetadata(): Promise<Metadata> {
   let nationCount = 48
@@ -148,6 +149,52 @@ function GroupCard({ group }: { group: StandingGroup }) {
   )
 }
 
+
+// standings 페이지와 동일: 각 조에 3위 팀 삽입
+function enrichWithThirdPlace(
+  groups: StandingGroup[],
+  matches: MatchSummary[]
+): StandingGroup[] {
+  const teamToGroup = new Map<number, string>()
+  for (const group of groups) {
+    if (!/^Group [A-L]$/.test(group.groupName)) continue
+    for (const s of group.standings) {
+      if (s.teamApiId != null) teamToGroup.set(s.teamApiId, group.groupName)
+    }
+  }
+  const groupStage = groups.find((g) => g.groupName === 'Group Stage')
+  if (!groupStage || groupStage.standings.length === 0)
+    return groups.filter(g => g.groupName !== 'Group Stage')
+
+  const groupStageIds = new Set(
+    groupStage.standings.map((s) => s.teamApiId).filter((id): id is number => id != null)
+  )
+  const gsTeamToGroup = new Map<number, string>()
+  for (const match of matches) {
+    const homeId = match.home?.teamApiId
+    const awayId = match.away?.teamApiId
+    if (homeId == null || awayId == null) continue
+    if (groupStageIds.has(homeId) && teamToGroup.has(awayId) && !gsTeamToGroup.has(homeId))
+      gsTeamToGroup.set(homeId, teamToGroup.get(awayId)!)
+    if (groupStageIds.has(awayId) && teamToGroup.has(homeId) && !gsTeamToGroup.has(awayId))
+      gsTeamToGroup.set(awayId, teamToGroup.get(homeId)!)
+  }
+  return groups
+    .filter((g) => g.groupName !== 'Group Stage')
+    .map((group) => {
+      const thirdPlaceEntry = groupStage.standings.find((s) => {
+        if (s.teamApiId == null) return false
+        return gsTeamToGroup.get(s.teamApiId) === group.groupName
+      })
+      if (!thirdPlaceEntry) return group
+      const standings = [...group.standings]
+      const insertIdx = standings.findIndex((s) => s.rank >= 3)
+      if (insertIdx === -1) standings.push({ ...thirdPlaceEntry, rank: 3 })
+      else standings.splice(insertIdx, 0, { ...thirdPlaceEntry, rank: 3 })
+      return { ...group, standings }
+    })
+}
+
 export default async function HomePage() {
   let countries: Country[] = []
   let topScorers: StatsRanking[] = []
@@ -160,6 +207,9 @@ export default async function HomePage() {
     api.getMatches().then(d => { matches = d }),
     api.getStandings().then(d => { standings = d }),
   ])
+
+  // Group Stage 3위 팀을 각 조에 삽입 후 Group Stage 카드는 제외
+  const groupStandings = enrichWithThirdPlace(standings, matches)
 
   const sortedMatches = [...matches].sort((a, b) => {
     const aLive = LIVE_STATUS.has(a.statusShort ?? '') ? 0 : a.statusShort === 'FT' ? 1 : 2
@@ -299,27 +349,7 @@ export default async function HomePage() {
       {/* ── Live & Results ────────────────────────────────────── */}
       <section className="block">
         <div className="wrap">
-          <div className="sec-head">
-            <div className="left">
-              <p className="eyebrow">Live &amp; Results</p>
-              <h2>지금 <span className="kr">진행 중인</span> 경기</h2>
-              <p>실시간 스코어와 경기 결과를 확인하세요.</p>
-            </div>
-            <Link href="/matches" className="link-more">
-              전체 경기
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </Link>
-          </div>
-
-          {recentMatches.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-              {recentMatches.map(m => <MatchCard key={m.fixtureId} match={m} />)}
-            </div>
-          ) : (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
-              경기 일정을 불러오는 중입니다.
-            </div>
-          )}
+          <HomeMatchSection />
         </div>
       </section>
 
@@ -329,7 +359,7 @@ export default async function HomePage() {
           <div className="sec-head">
             <div className="left">
               <p className="eyebrow">Group Stage</p>
-              <h2>{countries.length > 0 ? `${countries.length}개국` : "—"} · <span className="kr">{standings.length > 0 ? `${standings.length}개 조` : "—"}</span> 순위표</h2>
+              <h2>{countries.length > 0 ? `${countries.length}개국` : "—"} · <span className="kr">{groupStandings.length > 0 ? `${groupStandings.length}개 조` : "—"}</span> 순위표</h2>
               <p>조별 리그 현황과 각 팀의 승점을 확인하세요.</p>
             </div>
             <Link href="/standings" className="link-more">
@@ -338,9 +368,9 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {standings.length > 0 ? (
+          {groupStandings.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-              {standings.map(g => <GroupCard key={g.groupName} group={g} />)}
+              {groupStandings.map(g => <GroupCard key={g.groupName} group={g} />)}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>

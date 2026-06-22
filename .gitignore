@@ -41,3 +41,6 @@ frontend/*.tsbuildinfo
 .env.local
 .DS_Store
 Thumbs.db
+
+# Temp files
+.fuse_hidden*
