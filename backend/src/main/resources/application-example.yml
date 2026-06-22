@@ -1,0 +1,24 @@
+c# ================================================================
+# application-local.yml 작성 예시 파일 (Git에 커밋되는 안전한 버전)
+# 실제 사용 시 이 파일을 복사해 application-local.yml 로 이름 변경 후
+# 각 값을 본인 환경에 맞게 채워 넣으세요.
+# ================================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/pitchlog
+    username: pitchlog
+    password: pitchlog
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+api-football:
+  api-key: 여기에_API_Football_키_입력
+
+logging:
+  level:
+    com.pitchlog: DEBUG
+    org.hibernate.SQL: DEBUG

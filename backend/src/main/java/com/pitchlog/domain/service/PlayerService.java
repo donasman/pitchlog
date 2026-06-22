@@ -29,42 +29,61 @@ public class PlayerService {
         return PlayerDetailResponse.from(player, stats);
     }
 
-    /** 전 리그 합산 득점 기준 상위 선수 목록 (DB GROUP BY 집계) */
+    /** 전 리그 합산 득점 기준 상위 선수 목록 (클럽 시즌) */
     public List<StatsRankingResponse> getTopScorers(int limit) {
-        return playerSeasonStatsRepository.aggregateStatsByActivePlayers()
-                .stream()
-                .map(StatsRankingResponse::from)
-                .sorted(Comparator.comparingInt(StatsRankingResponse::goals).reversed())
-                .limit(limit)
-                .toList();
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayers(),
+                Comparator.comparingInt(StatsRankingResponse::goals).reversed(), limit);
     }
 
-    /** 전 리그 합산 도움 기준 상위 선수 목록 (DB GROUP BY 집계) */
+    /** 전 리그 합산 도움 기준 상위 선수 목록 (클럽 시즌) */
     public List<StatsRankingResponse> getTopAssists(int limit) {
-        return playerSeasonStatsRepository.aggregateStatsByActivePlayers()
-                .stream()
-                .map(StatsRankingResponse::from)
-                .sorted(Comparator.comparingInt(StatsRankingResponse::assists).reversed())
-                .limit(limit)
-                .toList();
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayers(),
+                Comparator.comparingInt(StatsRankingResponse::assists).reversed(), limit);
     }
 
-    /** 전 리그 합산 경고 누적 기준 상위 선수 목록 */
+    /** 전 리그 합산 경고 누적 기준 상위 선수 목록 (클럽 시즌) */
     public List<StatsRankingResponse> getTopYellowCards(int limit) {
-        return playerSeasonStatsRepository.aggregateStatsByActivePlayers()
-                .stream()
-                .map(StatsRankingResponse::from)
-                .sorted(Comparator.comparingInt(StatsRankingResponse::yellowCards).reversed())
-                .limit(limit)
-                .toList();
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayers(),
+                Comparator.comparingInt(StatsRankingResponse::yellowCards).reversed(), limit);
     }
 
-    /** 전 리그 합산 퇴장 기준 상위 선수 목록 */
+    /** 전 리그 합산 퇴장 기준 상위 선수 목록 (클럽 시즌) */
     public List<StatsRankingResponse> getTopRedCards(int limit) {
-        return playerSeasonStatsRepository.aggregateStatsByActivePlayers()
-                .stream()
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayers(),
+                Comparator.comparingInt(StatsRankingResponse::redCards).reversed(), limit);
+    }
+
+    // ── 월드컵 전용 (leagueApiId = 1) ────────────────────────────────────────
+
+    public List<StatsRankingResponse> getTopScorersWorldCup(int limit) {
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayersAndLeague(1),
+                Comparator.comparingInt(StatsRankingResponse::goals).reversed(), limit);
+    }
+
+    public List<StatsRankingResponse> getTopAssistsWorldCup(int limit) {
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayersAndLeague(1),
+                Comparator.comparingInt(StatsRankingResponse::assists).reversed(), limit);
+    }
+
+    public List<StatsRankingResponse> getTopYellowCardsWorldCup(int limit) {
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayersAndLeague(1),
+                Comparator.comparingInt(StatsRankingResponse::yellowCards).reversed(), limit);
+    }
+
+    public List<StatsRankingResponse> getTopRedCardsWorldCup(int limit) {
+        return ranked(playerSeasonStatsRepository.aggregateStatsByActivePlayersAndLeague(1),
+                Comparator.comparingInt(StatsRankingResponse::redCards).reversed(), limit);
+    }
+
+    // ── 공통 헬퍼 ────────────────────────────────────────────────────────────
+
+    private List<StatsRankingResponse> ranked(
+            List<PlayerSeasonStatsRepository.PlayerStatsProjection> projections,
+            Comparator<StatsRankingResponse> comparator,
+            int limit) {
+        return projections.stream()
                 .map(StatsRankingResponse::from)
-                .sorted(Comparator.comparingInt(StatsRankingResponse::redCards).reversed())
+                .sorted(comparator)
                 .limit(limit)
                 .toList();
     }

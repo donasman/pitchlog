@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { api } from '@/lib/api'
+import type { StatsRanking } from '@/types'
 import StatsRankingPage from '@/components/stats/StatsRankingPage'
 
 export const metadata: Metadata = {
@@ -13,7 +15,16 @@ export const metadata: Metadata = {
   },
 }
 
-export default function TopCardsPage() {
+export default async function TopCardsPage() {
+  let seasonRankings: StatsRanking[] = []
+  let worldcupRankings: StatsRanking[] = []
+  try {
+    ;[seasonRankings, worldcupRankings] = await Promise.all([
+      api.getTopYellowCards(30, 'season'),
+      api.getTopYellowCards(30, 'worldcup'),
+    ])
+  } catch { /* 빈 상태 표시 */ }
+
   return (
     <StatsRankingPage
       mode="yellowCards"
@@ -21,6 +32,8 @@ export default function TopCardsPage() {
       title="Top Cards"
       crossLinkHref="/stats/top-scorers"
       crossLinkLabel="Top Scorers"
+      seasonRankings={seasonRankings}
+      worldcupRankings={worldcupRankings}
     />
   )
 }

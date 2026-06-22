@@ -19,7 +19,7 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
 
     /**
      * 월드컵 최종 엔트리(active=true) 선수의 통계를 DB에서 집계해 반환.
-     * Java 스트림 집계 대신 DB GROUP BY를 사용해 성능 개선.
+     * 클럽 시즌 전체 합산 (leagueApiId 무관).
      */
     @Query("""
            SELECT p.id          AS playerId,
@@ -40,6 +40,32 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
            GROUP BY p.id, p.name, p.photoUrl, p.nationality
            """)
     List<PlayerStatsProjection> aggregateStatsByActivePlayers();
+
+    /**
+     * 특정 리그(leagueApiId)만 필터링한 집계.
+     * source=worldcup 시 leagueApiId=1 (FIFA 월드컵) 전달.
+     */
+    @Query("""
+           SELECT p.id          AS playerId,
+                  p.name        AS playerName,
+                  p.photoUrl    AS photoUrl,
+                  p.nationality AS nationality,
+                  COALESCE(SUM(s.goals),       0) AS goals,
+                  COALESCE(SUM(s.assists),     0) AS assists,
+                  COALESCE(SUM(s.appearances), 0) AS appearances,
+                  COALESCE(SUM(s.yellowCards), 0) AS yellowCards,
+                  COALESCE(SUM(s.redCards),    0) AS redCards
+           FROM PlayerSeasonStats s
+           JOIN s.player p
+           WHERE EXISTS (
+               SELECT 1 FROM SquadEntry se
+               WHERE se.player = p AND se.active = true
+           )
+           AND s.leagueApiId = :leagueApiId
+           GROUP BY p.id, p.name, p.photoUrl, p.nationality
+           """)
+    List<PlayerStatsProjection> aggregateStatsByActivePlayersAndLeague(
+            @Param("leagueApiId") Integer leagueApiId);
 
     /** DB 집계 결과 projection */
     interface PlayerStatsProjection {

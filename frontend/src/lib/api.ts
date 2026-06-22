@@ -21,17 +21,17 @@ export const api = {
   getPlayer: (id: number): Promise<PlayerDetail> =>
     fetcher(`/api/players/${id}`),
 
-  getTopScorers: (limit = 20): Promise<StatsRanking[]> =>
-    fetcher(`/api/players/top-scorers?limit=${limit}`),
+  getTopScorers: (limit = 20, source: 'season' | 'worldcup' = 'season'): Promise<StatsRanking[]> =>
+    fetcher(`/api/players/top-scorers?limit=${limit}&source=${source}`),
 
-  getTopAssists: (limit = 20): Promise<StatsRanking[]> =>
-    fetcher(`/api/players/top-assists?limit=${limit}`),
+  getTopAssists: (limit = 20, source: 'season' | 'worldcup' = 'season'): Promise<StatsRanking[]> =>
+    fetcher(`/api/players/top-assists?limit=${limit}&source=${source}`),
 
-  getTopYellowCards: (limit = 20): Promise<StatsRanking[]> =>
-    fetcher(`/api/players/top-yellowcards?limit=${limit}`),
+  getTopYellowCards: (limit = 20, source: 'season' | 'worldcup' = 'season'): Promise<StatsRanking[]> =>
+    fetcher(`/api/players/top-yellowcards?limit=${limit}&source=${source}`),
 
-  getTopRedCards: (limit = 20): Promise<StatsRanking[]> =>
-    fetcher(`/api/players/top-redcards?limit=${limit}`),
+  getTopRedCards: (limit = 20, source: 'season' | 'worldcup' = 'season'): Promise<StatsRanking[]> =>
+    fetcher(`/api/players/top-redcards?limit=${limit}&source=${source}`),
 
   getMatches: (): Promise<MatchSummary[]> =>
     fetcher('/api/matches'),
