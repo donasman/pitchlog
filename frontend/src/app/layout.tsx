@@ -89,7 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   { href: '/matches', label: '라이브' },
                   { href: '/standings', label: '조 순위' },
                   { href: '/squads', label: '참가국' },
-                  { href: '/stats/top-scorers', label: '통계' },
+                  { href: '/stats', label: '통계' },
                 ].map(({ href, label }) => (
                   <Link
                     key={label}
@@ -152,9 +152,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/matches">라이브 경기</Link>
                 <Link href="/standings">조별 순위</Link>
                 <Link href="/squads">참가국 스쿼드</Link>
-                <Link href="/stats/top-scorers">득점 순위</Link>
-                <Link href="/stats/top-assists">도움 순위</Link>
-                <Link href="/stats/top-cards">경고 누적</Link>
+                <Link href="/stats">통계 (득점/도움/경고)</Link>
               </div>
               <div className="foot-col">
                 <h4>정보</h4>
