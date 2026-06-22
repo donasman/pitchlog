@@ -1,19 +1,31 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import type { StatsRanking, MatchSummary, StandingGroup } from '@/types'
+import type { Country, StatsRanking, MatchSummary, StandingGroup } from '@/types'
 import { playerSlug } from '@/lib/utils'
 
-export const metadata: Metadata = {
-  title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
-  description: '48개국 736명의 선수, 실시간 경기 스코어와 심층 통계. PitchLog가 2026 월드컵의 모든 순간을 데이터로 추적합니다.',
-  alternates: { canonical: 'https://pitchlog.com' },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  let nationCount = 48
+  let playerCount = 736
+  try {
+    const countries = await api.getCountries()
+    if (countries.length > 0) {
+      nationCount = countries.length
+      playerCount = countries.length * 26
+    }
+  } catch { /* fallback to defaults */ }
+  const desc = `${nationCount}개국 ${playerCount}명의 선수, 실시간 경기 스코어와 심층 통계. PitchLog가 2026 월드컵의 모든 순간을 데이터로 추적합니다.`
+  return {
     title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
-    description: '48개국 736명의 선수, 실시간 경기 스코어와 심층 통계.',
-    url: 'https://pitchlog.com',
-    type: 'website',
-  },
+    description: desc,
+    alternates: { canonical: 'https://pitchlog.com' },
+    openGraph: {
+      title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
+      description: `${nationCount}개국 ${playerCount}명의 선수, 실시간 경기 스코어와 심층 통계.`,
+      url: 'https://pitchlog.com',
+      type: 'website',
+    },
+  }
 }
 
 const LIVE_STATUS = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'INT'])
@@ -137,11 +149,13 @@ function GroupCard({ group }: { group: StandingGroup }) {
 }
 
 export default async function HomePage() {
+  let countries: Country[] = []
   let topScorers: StatsRanking[] = []
   let matches: MatchSummary[] = []
   let standings: StandingGroup[] = []
 
   await Promise.allSettled([
+    api.getCountries().then(d => { countries = d }),
     api.getTopScorers(5, 'worldcup').then(d => { topScorers = d }),
     api.getMatches().then(d => { matches = d }),
     api.getStandings().then(d => { standings = d }),
@@ -189,7 +203,7 @@ export default async function HomePage() {
               </h1>
 
               <p style={{ fontSize: 16, color: 'var(--ink-2)', maxWidth: 460, lineHeight: 1.65, marginBottom: 32 }}>
-                48개국 736명의 선수, 실시간 스코어와 심층 통계를 한곳에서.
+                {countries.length > 0 ? `${countries.length}개국 ${countries.length * 26}명의 선수` : '48개국'}, 실시간 스코어와 심층 통계를 한곳에서.
               </p>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 44 }}>
@@ -206,15 +220,15 @@ export default async function HomePage() {
 
               <div className="stats-strip">
                 <div className="stat-item">
-                  <div className="stat-num">48개국</div>
+                  <div className="stat-num">{countries.length > 0 ? `${countries.length}개국` : '—'}</div>
                   <div className="stat-lab">Nations</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-num">736</div>
+                  <div className="stat-num">{countries.length > 0 ? countries.length * 26 : '—'}</div>
                   <div className="stat-lab">Players</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-num">104</div>
+                  <div className="stat-num">{matches.length > 0 ? matches.length : '—'}</div>
                   <div className="stat-lab">Matches</div>
                 </div>
               </div>
@@ -260,7 +274,7 @@ export default async function HomePage() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                 </div>
                 <div>
-                  <div className="fc-num">{matches.length || 104}</div>
+                  <div className="fc-num">{matches.length > 0 ? matches.length : '—'}</div>
                   <div className="fc-lab">Matches</div>
                 </div>
               </div>
@@ -315,7 +329,7 @@ export default async function HomePage() {
           <div className="sec-head">
             <div className="left">
               <p className="eyebrow">Group Stage</p>
-              <h2>48개국 · <span className="kr">12개 조</span> 순위표</h2>
+              <h2>{countries.length > 0 ? `${countries.length}개국` : "—"} · <span className="kr">{standings.length > 0 ? `${standings.length}개 조` : "—"}</span> 순위표</h2>
               <p>조별 리그 현황과 각 팀의 승점을 확인하세요.</p>
             </div>
             <Link href="/standings" className="link-more">
