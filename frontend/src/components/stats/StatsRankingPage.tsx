@@ -36,7 +36,7 @@ export default function StatsRankingPage({
   return (
     <div className="wrap space-y-8 py-8 max-w-4xl mx-auto">
       <PageHeader
-        eyebrow="Stats"
+        eyebrow="통계"
         title={<><span>{icon}</span> {title}</>}
         subtitle={source === 'worldcup'
           ? '2026 FIFA 월드컵 — 진행 중 통계'

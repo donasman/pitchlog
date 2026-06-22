@@ -68,10 +68,10 @@ export default async function PlayerDetailPage({ params }: Props) {
   } catch {
     return (
       <EmptyState
-        title="Player not found"
-        message="The player data could not be loaded."
+        title="선수를 찾을 수 없습니다"
+        message="선수 데이터를 불러오지 못했습니다."
         backHref="/squads"
-        backLabel="Back to Squads"
+        backLabel="전체 스쿼드"
       />
     )
   }
@@ -79,16 +79,16 @@ export default async function PlayerDetailPage({ params }: Props) {
   if (!player)
     return (
       <EmptyState
-        title="Player not found"
-        message="The player data could not be loaded."
+        title="선수를 찾을 수 없습니다"
+        message="선수 데이터를 불러오지 못했습니다."
         backHref="/squads"
-        backLabel="Back to Squads"
+        backLabel="전체 스쿼드"
       />
     )
 
   return (
     <div className="wrap space-y-10 py-8 max-w-3xl mx-auto">
-      <BackLink href="/squads" label="All Squads" />
+      <BackLink href="/squads" label="전체 스쿼드" />
 
       {/* Profile card */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -110,9 +110,9 @@ export default async function PlayerDetailPage({ params }: Props) {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
               {[
-                { label: 'Born',   value: formatBirthDate(player.birthDate) },
-                { label: 'Height', value: player.height ?? '-' },
-                { label: 'Weight', value: player.weight ?? '-' },
+                { label: '생년월일', value: formatBirthDate(player.birthDate) },
+                { label: '신장',    value: player.height ?? '-' },
+                { label: '체중',    value: player.weight ?? '-' },
               ].map((item) => (
                 <div key={item.label} className="rounded-lg bg-muted/50 px-3 py-2">
                   <p className="text-xs text-muted-foreground mb-0.5">{item.label}</p>
@@ -127,21 +127,21 @@ export default async function PlayerDetailPage({ params }: Props) {
       {/* Season stats */}
       {player.stats.length > 0 ? (
         <section>
-          <h2 className="text-xl font-bold mb-4">Season Stats</h2>
+          <h2 className="text-xl font-bold mb-4">시즌 통계</h2>
           <div className="rounded-xl border border-border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/40 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="py-3 pl-4 pr-3">Season</th>
-                    <th className="py-3 pr-3">Team</th>
-                    <th className="py-3 pr-3 hidden sm:table-cell">League</th>
-                    <th className="py-3 pr-3 text-right">Apps</th>
-                    <th className="py-3 pr-3 text-right text-primary">G</th>
-                    <th className="py-3 pr-3 text-right text-primary">A</th>
-                    <th className="py-3 pr-3 text-right hidden sm:table-cell">YC</th>
-                    <th className="py-3 pr-3 text-right hidden sm:table-cell">RC</th>
-                    <th className="py-3 pr-4 text-right">Rating</th>
+                    <th className="py-3 pl-4 pr-3">시즌</th>
+                    <th className="py-3 pr-3">팀</th>
+                    <th className="py-3 pr-3 hidden sm:table-cell">리그</th>
+                    <th className="py-3 pr-3 text-right">출장</th>
+                    <th className="py-3 pr-3 text-right text-primary">골</th>
+                    <th className="py-3 pr-3 text-right text-primary">도움</th>
+                    <th className="py-3 pr-3 text-right hidden sm:table-cell">경고</th>
+                    <th className="py-3 pr-3 text-right hidden sm:table-cell">퇴장</th>
+                    <th className="py-3 pr-4 text-right">평점</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -194,17 +194,17 @@ export default async function PlayerDetailPage({ params }: Props) {
         </section>
       ) : (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground text-sm">No season stats available.</p>
+          <p className="text-muted-foreground text-sm">시즌 통계 데이터가 없습니다.</p>
         </div>
       )}
 
       <div className="flex gap-4 justify-center pt-2">
         <Link href="/stats/top-scorers" className="text-sm text-primary hover:underline underline-offset-4">
-          Top Scorers
+          득점 순위
         </Link>
         <span className="text-muted-foreground/40">&#xB7;</span>
         <Link href="/stats/top-assists" className="text-sm text-primary hover:underline underline-offset-4">
-          Top Assists
+          도움 순위
         </Link>
       </div>
     </div>

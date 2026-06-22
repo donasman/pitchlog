@@ -64,10 +64,10 @@ export default async function CountrySquadPage({ params }: Props) {
   } catch {
     return (
       <EmptyState
-        title="Squad not found"
-        message={`Could not load squad for ${code}.`}
+        title="스쿼드를 찾을 수 없습니다"
+        message={`${code} 스쿼드를 불러오지 못했습니다.`}
         backHref="/squads"
-        backLabel="Back to Squads"
+        backLabel="전체 스쿼드"
       />
     )
   }
@@ -75,10 +75,10 @@ export default async function CountrySquadPage({ params }: Props) {
   if (!squad)
     return (
       <EmptyState
-        title="Squad not found"
-        message={`Could not load squad for ${code}.`}
+        title="스쿼드를 찾을 수 없습니다"
+        message={`${code} 스쿼드를 불러오지 못했습니다.`}
         backHref="/squads"
-        backLabel="Back to Squads"
+        backLabel="전체 스쿼드"
       />
     )
 
@@ -95,7 +95,7 @@ export default async function CountrySquadPage({ params }: Props) {
 
   return (
     <div className="wrap space-y-10 py-8">
-      <BackLink href="/squads" label="All Squads" />
+      <BackLink href="/squads" label="전체 스쿼드" />
 
       <div className="flex items-center gap-5">
         <CountryFlag

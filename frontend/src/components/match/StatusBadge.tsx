@@ -34,9 +34,9 @@ const PRESET: Record<StatusBadgeSize, {
     dot: 'w-2 h-2',
     gap: 'gap-1.5',
     live: 'LIVE',
-    finished: 'Full Time',
-    halftime: 'Half Time',
-    notStarted: 'Not Started',
+    finished: '종료',
+    halftime: '하프타임',
+    notStarted: '경기 전',
   },
 }
 

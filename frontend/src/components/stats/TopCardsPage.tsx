@@ -29,9 +29,9 @@ export default async function TopCardsPage() {
     <StatsRankingPage
       mode="yellowCards"
       icon="🟨"
-      title="Top Cards"
+      title="카드 순위"
       crossLinkHref="/stats/top-scorers"
-      crossLinkLabel="Top Scorers"
+      crossLinkLabel="득점 순위"
       seasonRankings={seasonRankings}
       worldcupRankings={worldcupRankings}
     />

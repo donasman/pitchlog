@@ -29,9 +29,9 @@ export default async function TopAssistsPage() {
     <StatsRankingPage
       mode="assists"
       icon="🎯"
-      title="Top Assists"
+      title="도움 순위"
       crossLinkHref="/stats/top-scorers"
-      crossLinkLabel="Top Scorers"
+      crossLinkLabel="득점 순위"
       seasonRankings={seasonRankings}
       worldcupRankings={worldcupRankings}
     />

@@ -116,12 +116,12 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
   const posLabel = POS_LABEL[player?.pos ?? ''] ?? player?.pos ?? '?'
 
   const STAT_LABELS: Array<[keyof PlayerStats, string]> = [
-    ['shooting', 'Shot Accuracy'],
-    ['passing',  'Pass Accuracy'],
-    ['dribble',  'Dribble Success'],
-    ['defense',  'Tackles + Interceptions'],
-    ['physical', 'Duel Win Rate'],
-    ['rating',   'Rating'],
+    ['shooting', '슈팅 정확도'],
+    ['passing',  '패스 정확도'],
+    ['dribble',  '드리블 성공률'],
+    ['defense',  '태클+인터셉트'],
+    ['physical', '듀얼 승률'],
+    ['rating',   '평점'],
   ]
 
   return (

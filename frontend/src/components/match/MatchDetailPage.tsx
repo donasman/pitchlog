@@ -61,20 +61,20 @@ export default async function MatchDetailPage({ params }: Props) {
   } catch {
     return (
       <EmptyState
-        title="Match not found"
-        message="The match data could not be loaded."
+        title="경기를 찾을 수 없습니다"
+        message="경기 데이터를 불러오지 못했습니다."
         backHref="/matches"
-        backLabel="Back to Schedule"
+        backLabel="경기 일정으로"
       />
     )
   }
   if (!match)
     return (
       <EmptyState
-        title="Match not found"
-        message="The match data could not be loaded."
+        title="경기를 찾을 수 없습니다"
+        message="경기 데이터를 불러오지 못했습니다."
         backHref="/matches"
-        backLabel="Back to Schedule"
+        backLabel="경기 일정으로"
       />
     )
 
@@ -110,7 +110,7 @@ export default async function MatchDetailPage({ params }: Props) {
 
   return (
     <div className="wrap space-y-8 py-8 max-w-3xl mx-auto">
-      <BackLink href="/matches" label="All Fixtures" />
+      <BackLink href="/matches" label="전체 경기" />
 
       {/* 스코어카드 */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -186,7 +186,7 @@ export default async function MatchDetailPage({ params }: Props) {
       {/* 라인업 */}
       {hasLineup ? (
         <section className="space-y-4">
-          <h2 className="text-xl font-bold">Starting Lineups</h2>
+          <h2 className="text-xl font-bold">선발 라인업</h2>
           <PitchFormation home={homeLineup!} away={awayLineup!} />
 
           {/* 교체 선수 */}
@@ -194,7 +194,7 @@ export default async function MatchDetailPage({ params }: Props) {
             {[homeLineup!, awayLineup!].map((team) => (
               <div key={team.teamApiId} className="rounded-xl border border-border bg-card p-4">
                 <h3 className="text-sm font-bold mb-3 text-muted-foreground uppercase tracking-wider">
-                  {team.teamName} &mdash; Subs
+                  {team.teamName} &mdash; 교체 선수
                 </h3>
                 <div className="space-y-1.5">
                   {team.substitutes.map((p) => (
@@ -216,7 +216,7 @@ export default async function MatchDetailPage({ params }: Props) {
                     </div>
                   ))}
                   {team.substitutes.length === 0 && (
-                    <p className="text-xs text-muted-foreground">No substitute data</p>
+                    <p className="text-xs text-muted-foreground">교체 선수 데이터 없음</p>
                   )}
                 </div>
               </div>
@@ -226,11 +226,11 @@ export default async function MatchDetailPage({ params }: Props) {
       ) : (
         <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
           <div className="text-3xl">&#x1F4CB;</div>
-          <p className="font-semibold">Lineup not available yet</p>
+          <p className="font-semibold">라인업이 아직 없습니다</p>
           <p className="text-sm text-muted-foreground">
             {match.statusShort === 'NS'
-              ? 'Lineups are usually announced 1 hour before kick-off.'
-              : 'Lineup data could not be loaded for this match.'}
+              ? '라인업은 킥오프 1시간 전에 공개됩니다.'
+              : '이 경기의 라인업 데이터를 불러오지 못했습니다.'}
           </p>
         </div>
       )}
