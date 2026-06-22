@@ -111,22 +111,26 @@ function GroupCard({ group }: { group: StandingGroup }) {
 
       {/* Teams */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {group.standings.slice(0, 4).map((entry, i) => (
-          <div key={entry.teamApiId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {entry.teamLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={entry.teamLogo} alt={entry.teamName} width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
-            ) : (
-              <div style={{ width: 16, height: 16, borderRadius: 3, background: 'var(--surface-2)', flexShrink: 0 }} />
-            )}
-            <span style={{ flex: 1, fontSize: 12, fontWeight: i < 2 ? 600 : 400, color: i < 2 ? 'var(--ink)' : 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {entry.teamName}
-            </span>
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: i < 2 ? 'var(--gold)' : 'var(--ink-3)', flexShrink: 0 }}>
-              {entry.points ?? 0}
-            </span>
-          </div>
-        ))}
+        {group.standings.slice(0, 4).map((entry, i) => {
+          const ptColor = i < 2 ? 'var(--gold)' : i === 2 ? '#f59e0b' : 'var(--ink-3)'
+          const nameColor = i < 2 ? 'var(--ink)' : i === 2 ? 'var(--ink-2)' : 'var(--ink-3)'
+          return (
+            <div key={entry.teamApiId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {entry.teamLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={entry.teamLogo} alt={entry.teamName} width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: 16, height: 16, borderRadius: 3, background: 'var(--surface-2)', flexShrink: 0 }} />
+              )}
+              <span style={{ flex: 1, fontSize: 12, fontWeight: i < 2 ? 600 : 400, color: nameColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {entry.teamName}
+              </span>
+              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: ptColor, flexShrink: 0 }}>
+                {entry.points ?? 0}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </Link>
   )

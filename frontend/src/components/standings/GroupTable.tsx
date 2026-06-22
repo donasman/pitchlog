@@ -78,15 +78,25 @@ export function GroupTable({ group, promotionCount = 2 }: GroupTableProps) {
         </thead>
         <tbody>
           {group.standings.map((entry, idx) => {
-            const isPromotion = idx < promotionCount
+            const isPromotion = idx < promotionCount         // 1~2위: 확정 진출
+            const isMaybePromotion = !isPromotion && idx === 2 && !isGroupStage  // 3위: 진출 가능
+            const rowBg = isPromotion
+              ? 'rgba(39, 194, 129, 0.05)'
+              : isMaybePromotion
+                ? 'rgba(245, 158, 11, 0.05)'
+                : undefined
+            const badgeBg = isPromotion
+              ? 'var(--gold)'
+              : isMaybePromotion
+                ? '#f59e0b'
+                : 'var(--line)'
+            const badgeColor = isPromotion || isMaybePromotion ? '#0a0a0a' : 'var(--ink-3)'
             return (
               <tr
                 key={entry.teamApiId}
                 style={{
                   borderTop: idx > 0 ? '1px solid var(--line)' : undefined,
-                  background: isPromotion
-                    ? 'rgba(245, 197, 24, 0.04)'
-                    : undefined,
+                  background: rowBg,
                 }}
               >
                 {/* 순위 */}
@@ -95,8 +105,8 @@ export function GroupTable({ group, promotionCount = 2 }: GroupTableProps) {
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: 20, height: 20, borderRadius: 4,
                     fontSize: 11, fontWeight: 700,
-                    background: isPromotion ? 'var(--gold)' : 'var(--line)',
-                    color: isPromotion ? '#0a0a0a' : 'var(--ink-3)',
+                    background: badgeBg,
+                    color: badgeColor,
                   }}>
                     {entry.rank}
                   </span>
@@ -150,16 +160,22 @@ export function GroupTable({ group, promotionCount = 2 }: GroupTableProps) {
 
       {/* 범례 */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
+        display: 'flex', alignItems: 'center', gap: 14,
         padding: '8px 16px',
         borderTop: '1px solid var(--line)',
         fontSize: 11, color: 'var(--ink-3)',
+        flexWrap: 'wrap',
       }}>
-        <span style={{
-          display: 'inline-block', width: 8, height: 8, borderRadius: 2,
-          background: 'var(--gold)', marginRight: 2,
-        }} />
-        {promotionCount === 8 ? '16강 진출 (3위 상위 8팀)' : '16강 진출 (조 1~2위)'}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--gold)' }} />
+          {promotionCount === 8 ? '32강 진출 (3위 상위 8팀)' : '32강 진출 확정 (1~2위)'}
+        </span>
+        {!isGroupStage && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: '#f59e0b' }} />
+            32강 진출 가능 (3위)
+          </span>
+        )}
       </div>
     </div>
   )
