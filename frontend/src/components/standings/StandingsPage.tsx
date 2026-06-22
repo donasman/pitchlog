@@ -11,8 +11,10 @@ interface StandingsPageProps {
 export function StandingsPage({ groups }: StandingsPageProps) {
   const [activeGroup, setActiveGroup] = useState<string>('all')
 
-  // "Group Stage" 등 A~L 외 조 미배정 데이터 제외
+  // Group A~L 조별 데이터
   const validGroups = groups.filter((g) => /^Group [A-L]$/.test(g.groupName))
+  // 3위 팀 종합 순위 (Group Stage)
+  const groupStage = groups.find((g) => g.groupName === 'Group Stage')
   const letters = validGroups.map((g) => g.groupName.replace('Group ', ''))
   const displayed =
     activeGroup === 'all'
@@ -67,6 +69,21 @@ export function StandingsPage({ groups }: StandingsPageProps) {
           {displayed.map((group) => (
             <GroupTable key={group.groupName} group={group} />
           ))}
+        </div>
+      )}
+
+      {/* 3위 팀 종합 순위 — activeGroup === 'all' 일 때만 표시 */}
+      {activeGroup === 'all' && groupStage && groupStage.standings.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink-1)', margin: 0 }}>
+              3위 팀 비교
+            </h2>
+            <p style={{ marginTop: 6, fontSize: 13, color: 'var(--ink-3)' }}>
+              12개 조 3위 팀 중 상위 8팀이 16강에 추가 진출합니다
+            </p>
+          </div>
+          <GroupTable group={groupStage} promotionCount={8} />
         </div>
       )}
     </main>

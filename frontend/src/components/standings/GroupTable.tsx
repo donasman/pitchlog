@@ -3,6 +3,7 @@ import { FormTrack } from './FormBadge'
 
 interface GroupTableProps {
   group: StandingGroup
+  promotionCount?: number   // 진출 컷 (기본 2, Group Stage는 8)
 }
 
 const COL_STYLE: React.CSSProperties = {
@@ -26,8 +27,9 @@ const HEAD_STYLE: React.CSSProperties = {
   borderBottom: '1px solid var(--line)',
 }
 
-export function GroupTable({ group }: GroupTableProps) {
-  const letter = group.groupName.replace('Group ', '')
+export function GroupTable({ group, promotionCount = 2 }: GroupTableProps) {
+  const isGroupStage = group.groupName === 'Group Stage'
+  const letter = isGroupStage ? '3위' : group.groupName.replace('Group ', '')
 
   return (
     <div style={{
@@ -53,7 +55,7 @@ export function GroupTable({ group }: GroupTableProps) {
           {letter}
         </span>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink-1)' }}>
-          {group.groupName}
+          {group.groupName === 'Group Stage' ? '3위 팀 종합 순위' : group.groupName}
         </span>
       </div>
 
@@ -76,7 +78,7 @@ export function GroupTable({ group }: GroupTableProps) {
         </thead>
         <tbody>
           {group.standings.map((entry, idx) => {
-            const isPromotion = idx < 2  // 상위 2팀 진출
+            const isPromotion = idx < promotionCount
             return (
               <tr
                 key={entry.teamApiId}
@@ -157,7 +159,7 @@ export function GroupTable({ group }: GroupTableProps) {
           display: 'inline-block', width: 8, height: 8, borderRadius: 2,
           background: 'var(--gold)', marginRight: 2,
         }} />
-        16강 진출 (조 1~2위)
+        {promotionCount === 8 ? '16강 진출 (3위 상위 8팀)' : '16강 진출 (조 1~2위)'}
       </div>
     </div>
   )
