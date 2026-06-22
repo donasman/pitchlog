@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import type { Country, StandingGroup } from '@/types'
+import type { Country, StandingGroup, MatchSummary } from '@/types'
 import CountryFlag from '@/components/ui/CountryFlag'
 import PageHeader from '@/components/ui/PageHeader'
 
@@ -17,21 +17,23 @@ export const metadata: Metadata = {
   },
 }
 
-// 이름 정규화: 대소문자·공백 무시하여 비교
 function normName(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 interface CountryWithGroup extends Country {
-  resolvedGroup: string     // "A" ~ "L" 또는 "미정"
-  groupRank: number         // 조 내 순위 (시드 정렬용)
+  resolvedGroup: string
+  groupRank: number
 }
 
-function buildGroupMap(standings: StandingGroup[]): Map<string, { group: string; rank: number }> {
+// standings에서 Group A~L (1·2·4위) 매핑
+function buildGroupMapFromStandings(
+  standings: StandingGroup[]
+): Map<string, { group: string; rank: number }> {
   const map = new Map<string, { group: string; rank: number }>()
   for (const sg of standings) {
     if (sg.groupName === 'Group Stage') continue
-    const letter = sg.groupName.replace('Group ', '').trim()   // "A"~"L"
+    const letter = sg.groupName.replace('Group ', '').trim()
     sg.standings.forEach((entry, idx) => {
       map.set(normName(entry.teamName), { group: letter, rank: idx + 1 })
     })
@@ -39,35 +41,48 @@ function buildGroupMap(standings: StandingGroup[]): Map<string, { group: string;
   return map
 }
 
+// matches의 groupName으로 3위 팀 포함 전체 커버
+function buildGroupMapFromMatches(matches: MatchSummary[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const m of matches) {
+    if (!m.groupName) continue
+    const letter = m.groupName.match(/Group\s+([A-L])\b/i)?.[1]?.toUpperCase()
+    if (!letter) continue
+    if (m.home.name) map.set(normName(m.home.name), letter)
+    if (m.away.name) map.set(normName(m.away.name), letter)
+  }
+  return map
+}
+
 export default async function SquadsPage() {
-  let countries: Country[]      = []
+  let countries: Country[]       = []
   let standings: StandingGroup[] = []
+  let matches:   MatchSummary[]  = []
 
   try {
-    ;[countries, standings] = await Promise.all([
+    ;[countries, standings, matches] = await Promise.all([
       api.getCountries(),
       api.getStandings(),
+      api.getMatches(),
     ])
   } catch { /* 빌드 시 API 없을 경우 빈 배열 */ }
 
-  const groupMap = buildGroupMap(standings)
+  const standingsMap = buildGroupMapFromStandings(standings)
+  const matchesMap   = buildGroupMapFromMatches(matches)
 
-  // 각 나라에 resolvedGroup / groupRank 부여
   const enriched: CountryWithGroup[] = countries.map((c) => {
-    // 1) Country.groupName 이미 있으면 그대로 사용
+    const norm = normName(c.name)
     if (c.groupName) {
-      const norm = normName(c.name)
-      const info = groupMap.get(norm)
+      const info = standingsMap.get(norm)
       return { ...c, resolvedGroup: c.groupName, groupRank: info?.rank ?? 99 }
     }
-    // 2) standings에서 이름 매칭
-    const norm = normName(c.name)
-    const info = groupMap.get(norm)
-    if (info) return { ...c, resolvedGroup: info.group, groupRank: info.rank }
+    const sInfo = standingsMap.get(norm)
+    if (sInfo) return { ...c, resolvedGroup: sInfo.group, groupRank: sInfo.rank }
+    const mGroup = matchesMap.get(norm)
+    if (mGroup) return { ...c, resolvedGroup: mGroup, groupRank: 99 }
     return { ...c, resolvedGroup: '미정', groupRank: 99 }
   })
 
-  // 조별 그룹핑 → A~L 정렬, 미정은 마지막
   const byGroup = new Map<string, CountryWithGroup[]>()
   for (const c of enriched) {
     if (!byGroup.has(c.resolvedGroup)) byGroup.set(c.resolvedGroup, [])
@@ -80,7 +95,6 @@ export default async function SquadsPage() {
     return a.localeCompare(b)
   })
 
-  // 조 내 시드(rank) 순 정렬
   for (const list of byGroup.values()) {
     list.sort((a, b) => a.groupRank - b.groupRank)
   }
@@ -100,7 +114,6 @@ export default async function SquadsPage() {
             const isUnknown = groupKey === '미정'
             return (
               <section key={groupKey}>
-                {/* 조 헤더 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                   {!isUnknown && (
                     <span style={{
@@ -120,7 +133,6 @@ export default async function SquadsPage() {
                   <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{list.length}개국</span>
                 </div>
 
-                {/* 국가 카드 그리드 */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
@@ -158,9 +170,7 @@ export default async function SquadsPage() {
                         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
                           {country.code}
                           {!isUnknown && country.groupRank < 99 && (
-                            <span style={{ marginLeft: 6, color: 'var(--ink-3)' }}>
-                              · {country.groupRank}번 시드
-                            </span>
+                            <span style={{ marginLeft: 6 }}>· {country.groupRank}위</span>
                           )}
                         </div>
                       </div>
@@ -176,7 +186,6 @@ export default async function SquadsPage() {
           })}
         </div>
       ) : (
-        /* 스켈레톤 */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32, marginTop: 32 }}>
           {[...Array(4)].map((_, gi) => (
             <section key={gi}>
