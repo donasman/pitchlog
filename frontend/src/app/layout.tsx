@@ -3,6 +3,7 @@ import { Space_Grotesk, Space_Mono } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
 import LiveTicker from '@/components/layout/LiveTicker'
+import ThemeToggle from '@/components/layout/ThemeToggle'
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -29,11 +30,16 @@ export const metadata: Metadata = {
   },
 }
 
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
+        {/* Prevent dark mode flash */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            if (localStorage.getItem('pitch-theme') === 'dark') document.documentElement.classList.add('dark');
+          } catch(e) {}
+        ` }} />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link
@@ -58,34 +64,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           {/* Nav */}
           <div className="wrap">
-            <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
-              <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+            <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
+              {/* Logo */}
+              <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span className="brand-mark">
-                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <path d="M12 2 4 6v6c0 4.5 3.4 7.8 8 10 4.6-2.2 8-5.5 8-10V6l-8-4Z" fill="currentColor"/>
-                    <path d="M12 7.5 9.6 13l2.4 1.8L14.4 13 12 7.5Z" fill="#F5C518"/>
                   </svg>
                 </span>
-                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 20, letterSpacing: '-0.01em' }}>
+                <span style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 19,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--ink)',
+                }}>
                   Pitch<span style={{ color: 'var(--gold)' }}>Log</span>
                 </span>
               </Link>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {/* Nav links */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 {[
                   { href: '/matches', label: '라이브' },
                   { href: '/standings', label: '조 순위' },
                   { href: '/squads', label: '참가국' },
                   { href: '/stats/top-scorers', label: '통계' },
-                  { href: '/injuries', label: '부상/정지' },
                 ].map(({ href, label }) => (
                   <Link
                     key={label}
                     href={href}
                     style={{
-                      padding: '8px 14px', fontSize: 14, fontWeight: 500,
-                      color: 'var(--ink-2)', borderRadius: 8,
-                      transition: 'color 0.15s', whiteSpace: 'nowrap',
+                      padding: '7px 13px',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: 'var(--ink-2)',
+                      borderRadius: 8,
+                      transition: 'color 0.15s, background 0.15s',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {label}
@@ -93,19 +109,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 ))}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: 'var(--surface)', border: '1px solid var(--line)',
-                  borderRadius: 9, padding: '8px 12px',
-                  color: 'var(--ink-3)', fontSize: 13, width: 190,
-                }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-                  </svg>
-                  <span>선수·국가 검색</span>
-                </div>
-                <Link href="/admin" className="btn btn-gold">로그인</Link>
+              {/* Right: theme toggle + login */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ThemeToggle />
+                <Link href="/admin" className="btn btn-gold" style={{ padding: '8px 18px', fontSize: 14 }}>
+                  로그인
+                </Link>
               </div>
             </nav>
           </div>
@@ -119,19 +128,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="wrap">
             <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: 36, marginBottom: 44 }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                   <span className="brand-mark">
-                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                       <path d="M12 2 4 6v6c0 4.5 3.4 7.8 8 10 4.6-2.2 8-5.5 8-10V6l-8-4Z" fill="currentColor"/>
-                      <path d="M12 7.5 9.6 13l2.4 1.8L14.4 13 12 7.5Z" fill="#F5C518"/>
                     </svg>
                   </span>
-                  <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18 }}>
+                  <span style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontWeight: 700,
+                    fontSize: 17,
+                    color: 'var(--ink)',
+                  }}>
                     Pitch<span style={{ color: 'var(--gold)' }}>Log</span>
                   </span>
                 </div>
-                <p style={{ color: 'var(--ink-3)', fontSize: 13.5, maxWidth: 280 }}>
-                  2026 FIFA 월드컵 선수 통계 플랫폼. 48개국 736명의 선수 데이터를 실시간으로 추적합니다.
+                <p style={{ color: 'var(--ink-3)', fontSize: 13.5, maxWidth: 280, lineHeight: 1.6 }}>
+                  2026 FIFA 월드컵 선수 통계 플랫폼. 48개국 736명의 선수 데이터를 추적합니다.
                 </p>
               </div>
               <div className="foot-col">
@@ -142,7 +155,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/stats/top-scorers">득점 순위</Link>
                 <Link href="/stats/top-assists">도움 순위</Link>
                 <Link href="/stats/top-cards">경고 누적</Link>
-                <Link href="/injuries">부상 &amp; 출전정지</Link>
               </div>
               <div className="foot-col">
                 <h4>정보</h4>
@@ -158,7 +170,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              paddingTop: 26, borderTop: '1px solid var(--line)',
+              paddingTop: 24, borderTop: '1px solid var(--line)',
             }}>
               <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'var(--ink-3)' }}>
                 © 2026 PitchLog · 데이터 제공: API-Football

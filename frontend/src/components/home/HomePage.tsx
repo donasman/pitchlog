@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import type { Country, StatsRanking } from '@/types'
+import type { StatsRanking, MatchSummary, StandingGroup } from '@/types'
 import { playerSlug } from '@/lib/utils'
 
 export const metadata: Metadata = {
@@ -16,125 +16,260 @@ export const metadata: Metadata = {
   },
 }
 
+const LIVE_STATUS = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'INT'])
+
+function getStatusLabel(match: MatchSummary): { label: string; isLive: boolean } {
+  const s = match.statusShort ?? 'NS'
+  if (LIVE_STATUS.has(s)) return { label: `LIVE ${match.elapsed ?? ''}′`, isLive: true }
+  if (s === 'FT') return { label: 'FT', isLive: false }
+  if (s === 'AET') return { label: 'AET', isLive: false }
+  if (s === 'PEN') return { label: 'PEN', isLive: false }
+  return { label: '예정', isLive: false }
+}
+
+function MatchCard({ match }: { match: MatchSummary }) {
+  const { label, isLive } = getStatusLabel(match)
+  const group = match.groupName
+    ? match.groupName.replace('Group Stage - ', 'GROUP ')
+    : match.round ?? ''
+  const homeWin = (match.home.goals ?? 0) > (match.away.goals ?? 0)
+  const awayWin = (match.away.goals ?? 0) > (match.home.goals ?? 0)
+  const isFinished = ['FT', 'AET', 'PEN'].includes(match.statusShort ?? '')
+
+  return (
+    <Link href={`/matches/${match.fixtureId}`} className="score-card" style={{ display: 'block', textDecoration: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span className="sc-stage">{group}</span>
+        {isLive ? (
+          <span className="sc-live"><span className="d" />{label}</span>
+        ) : (
+          <span className="sc-stage" style={{ color: isFinished ? 'var(--ink-2)' : 'var(--ink-3)' }}>{label}</span>
+        )}
+      </div>
+      <div className="match-team-row">
+        {match.home.logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={match.home.logo} alt={match.home.name ?? ''} width={22} height={22} style={{ objectFit: 'contain', flexShrink: 0 }} />
+        ) : (
+          <div style={{ width: 22, height: 22, borderRadius: 4, background: 'var(--surface-2)', flexShrink: 0 }} />
+        )}
+        <span className="match-team-name" style={{ fontWeight: homeWin && isFinished ? 700 : 500 }}>{match.home.name ?? '—'}</span>
+        {match.home.goals != null && (
+          <span className={`match-team-score${homeWin && isFinished ? ' winner' : ''}`}>{match.home.goals}</span>
+        )}
+      </div>
+      <div className="match-team-row" style={{ borderBottom: 'none', paddingTop: 7 }}>
+        {match.away.logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={match.away.logo} alt={match.away.name ?? ''} width={22} height={22} style={{ objectFit: 'contain', flexShrink: 0 }} />
+        ) : (
+          <div style={{ width: 22, height: 22, borderRadius: 4, background: 'var(--surface-2)', flexShrink: 0 }} />
+        )}
+        <span className="match-team-name" style={{ fontWeight: awayWin && isFinished ? 700 : 500, color: 'var(--ink-2)' }}>{match.away.name ?? '—'}</span>
+        {match.away.goals != null && (
+          <span className={`match-team-score${awayWin && isFinished ? ' winner' : ''}`}>{match.away.goals}</span>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+// Mini Group Card for GROUP STAGE section
+function GroupCard({ group }: { group: StandingGroup }) {
+  const letter = group.groupName.replace('Group ', '')
+  return (
+    <Link
+      href={`/standings`}
+      style={{
+        display: 'block',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
+        borderRadius: 14,
+        padding: '14px 16px',
+        textDecoration: 'none',
+        transition: 'border-color 0.18s, transform 0.18s',
+      }}
+      className="group-card"
+    >
+      {/* Group label */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{
+          width: 26, height: 26,
+          borderRadius: 6,
+          background: 'var(--gold)',
+          color: 'var(--gold-fg)',
+          fontFamily: 'Space Grotesk, sans-serif',
+          fontWeight: 700,
+          fontSize: 13,
+          display: 'grid', placeItems: 'center',
+          flexShrink: 0,
+        }}>{letter}</span>
+        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+          GROUP {letter}
+        </span>
+      </div>
+
+      {/* Teams */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {group.standings.slice(0, 4).map((entry, i) => (
+          <div key={entry.teamApiId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {entry.teamLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={entry.teamLogo} alt={entry.teamName} width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 16, height: 16, borderRadius: 3, background: 'var(--surface-2)', flexShrink: 0 }} />
+            )}
+            <span style={{ flex: 1, fontSize: 12, fontWeight: i < 2 ? 600 : 400, color: i < 2 ? 'var(--ink)' : 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {entry.teamName}
+            </span>
+            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: i < 2 ? 'var(--gold)' : 'var(--ink-3)', flexShrink: 0 }}>
+              {entry.points ?? 0}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Link>
+  )
+}
+
 export default async function HomePage() {
-  let countries: Country[] = []
   let topScorers: StatsRanking[] = []
-  let topAssists: StatsRanking[] = []
+  let matches: MatchSummary[] = []
+  let standings: StandingGroup[] = []
 
   await Promise.allSettled([
-    api.getCountries().then(d => { countries = d }),
-    api.getTopScorers(6).then(d => { topScorers = d }),
-    api.getTopAssists(6).then(d => { topAssists = d }),
+    api.getTopScorers(5, 'worldcup').then(d => { topScorers = d }),
+    api.getMatches().then(d => { matches = d }),
+    api.getStandings().then(d => { standings = d }),
   ])
+
+  const sortedMatches = [...matches].sort((a, b) => {
+    const aLive = LIVE_STATUS.has(a.statusShort ?? '') ? 0 : a.statusShort === 'FT' ? 1 : 2
+    const bLive = LIVE_STATUS.has(b.statusShort ?? '') ? 0 : b.statusShort === 'FT' ? 1 : 2
+    return aLive - bLive
+  })
+  const recentMatches = sortedMatches.slice(0, 4)
 
   return (
     <>
-      {/* ── Hero ──────────────────────────────────────────────── */}
+      {/* ── Hero ── 2-column ──────────────────────────────────── */}
       <header className="hero">
-        <div className="wrap">
-          <div style={{
-            position: 'relative',
+        <div className="wrap" style={{ paddingTop: 72, paddingBottom: 80 }}>
+          <div className="hero-two-col" style={{
             display: 'grid',
-            gridTemplateColumns: '1.05fr 0.95fr',
-            gap: 40,
+            gridTemplateColumns: '1fr 1fr',
+            gap: 56,
             alignItems: 'center',
-            padding: '80px 0 90px',
           }}>
-            {/* Copy */}
+            {/* Left: text */}
             <div>
+              {/* Pill tag */}
               <div className="hero-tag">
-                <span className="pin">2026</span>
-                FIFA WORLD CUP · USA · CANADA · MEXICO
+                <span className="pin">LIVE</span>
+                2026 FIFA World Cup
               </div>
+
+              {/* Headline */}
               <h1 style={{
                 fontFamily: "'Space Grotesk', sans-serif",
-                fontWeight: 700,
-                fontSize: 'clamp(44px, 5.6vw, 76px)',
-                lineHeight: 0.98,
+                fontWeight: 800,
+                fontSize: 'clamp(34px, 4.8vw, 62px)',
+                lineHeight: 1.0,
                 letterSpacing: '-0.03em',
+                color: 'var(--ink)',
                 marginBottom: 22,
               }}>
                 모든 선수의<br />
-                <span style={{ color: 'var(--gold)' }}>데이터</span>가<br />
-                이곳에{' '}
-                <span style={{ WebkitTextStroke: '1.5px var(--gold)', color: 'transparent' }}>기록</span>된다
+                <span style={{ color: 'var(--gold)' }}>데이터</span>가 이곳에<br />
+                <span style={{ color: 'var(--gold)' }}>기록</span>된다
               </h1>
-              <p style={{ fontSize: 17, color: 'var(--ink-2)', maxWidth: 460, marginBottom: 32 }}>
-                48개국 736명의 선수, 실시간 경기 스코어와 심층 통계.
-                PitchLog가 2026 월드컵의 모든 순간을 데이터로 추적합니다.
+
+              <p style={{ fontSize: 16, color: 'var(--ink-2)', maxWidth: 460, lineHeight: 1.65, marginBottom: 32 }}>
+                48개국 736명의 선수, 실시간 스코어와 심층 통계를 한곳에서.
               </p>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Link href="/matches" className="btn btn-gold" style={{ padding: '13px 24px', fontSize: 15 }}>
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 44 }}>
+                <Link href="/matches" className="btn btn-gold" style={{ padding: '11px 22px', fontSize: 14 }}>
                   라이브 경기 보기
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                   </svg>
                 </Link>
-                <Link href="/stats/top-scorers" className="btn btn-ghost" style={{ padding: '13px 24px', fontSize: 15 }}>
-                  통계 탐색하기
+                <Link href="/squads" className="btn btn-ghost" style={{ padding: '11px 22px', fontSize: 14 }}>
+                  참가국 스쿼드
                 </Link>
               </div>
 
-              {/* Meta strip */}
-              <div className="hero-meta">
-                <div><div className="m-num">48<span>개국</span></div><div className="m-lab">Nations</div></div>
-                <div><div className="m-num">736</div><div className="m-lab">Players</div></div>
-                <div><div className="m-num">104</div><div className="m-lab">Matches</div></div>
-                <div><div className="m-num"><span>2.4M</span></div><div className="m-lab">Data points</div></div>
+              <div className="stats-strip">
+                <div className="stat-item">
+                  <div className="stat-num">48개국</div>
+                  <div className="stat-lab">Nations</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-num">736</div>
+                  <div className="stat-lab">Players</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-num">104</div>
+                  <div className="stat-lab">Matches</div>
+                </div>
               </div>
             </div>
 
-            {/* Visual */}
-            <div style={{ position: 'relative', height: 480 }}>
+            {/* Right: ring + float chips */}
+            <div className="hero-right-col" style={{ position: 'relative', height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Outer ring */}
               <div className="hero-ring" />
+
+              {/* Center: player circle */}
               <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(160deg, var(--surface-2) 0%, var(--bg-2) 100%)',
-                borderRadius: 20,
+                width: 220, height: 220,
+                borderRadius: '50%',
+                background: 'var(--gold-soft)',
+                border: '2px solid var(--gold-line)',
                 display: 'grid', placeItems: 'center',
+                position: 'relative', zIndex: 1,
+                overflow: 'hidden',
               }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 100, lineHeight: 1, marginBottom: 16 }}>⚽</div>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                    2026 FIFA World Cup
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ color: 'var(--gold)', opacity: 0.3 }}>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+
+              {/* Float chip — top scorer */}
+              {topScorers.length > 0 && (
+                <div className="float-chip" style={{ top: 48, right: 0, animation: 'floaty 4s ease-in-out infinite', zIndex: 2 }}>
+                  <div className="fc-ic">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
                   </div>
-                </div>
-              </div>
-              {/* Float chips */}
-              <div className="float-chip" style={{ top: 26, left: -14, animation: 'floaty 5s ease-in-out infinite' }}>
-                <span className="fc-ic">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>
-                  </svg>
-                </span>
-                <div>
-                  <div className="fc-num">{countries.length > 0 ? countries.length : 48}<span style={{ fontSize: 11 }}>개국</span></div>
-                  <div className="fc-lab">참가국 스쿼드 수록</div>
-                </div>
-              </div>
-              {topScorers[0] && (
-                <div className="float-chip" style={{ bottom: 70, right: -18, animation: 'floaty 5s ease-in-out 1.4s infinite' }}>
-                  <span className="fc-ic">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="4"/>
-                    </svg>
-                  </span>
                   <div>
-                    <div className="fc-num">{topScorers[0].goals ?? 0} 골</div>
-                    <div className="fc-lab">{topScorers[0].playerName} · Top Scorer</div>
+                    <div className="fc-num">{topScorers[0].goals ?? 0}골</div>
+                    <div className="fc-lab">Top Scorer</div>
                   </div>
                 </div>
               )}
-              {topAssists[0] && (
-                <div className="float-chip" style={{ bottom: 8, left: 30, animation: 'floaty 5s ease-in-out 2.6s infinite' }}>
-                  <span className="fc-ic">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 17l6-6 4 4 7-7"/>
-                    </svg>
-                  </span>
+
+              {/* Float chip — matches count */}
+              <div className="float-chip" style={{ bottom: 64, left: 0, animation: 'floaty 5s ease-in-out infinite 1.4s', zIndex: 2 }}>
+                <div className="fc-ic">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                </div>
+                <div>
+                  <div className="fc-num">{matches.length || 104}</div>
+                  <div className="fc-lab">Matches</div>
+                </div>
+              </div>
+
+              {/* Float chip — standings */}
+              {standings.length > 0 && (
+                <div className="float-chip" style={{ bottom: 160, right: -10, animation: 'floaty 6s ease-in-out infinite 0.7s', zIndex: 2 }}>
+                  <div className="fc-ic">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  </div>
                   <div>
-                    <div className="fc-num">{topAssists[0].assists ?? 0} 도움</div>
-                    <div className="fc-lab">{topAssists[0].playerName} · Top Assist</div>
+                    <div className="fc-num">{standings.length}개조</div>
+                    <div className="fc-lab">Group Stage</div>
                   </div>
                 </div>
               )}
@@ -143,171 +278,132 @@ export default async function HomePage() {
         </div>
       </header>
 
-      {/* ── 참가국 ───────────────────────────────────────────── */}
+      {/* ── Live & Results ────────────────────────────────────── */}
       <section className="block">
         <div className="wrap">
           <div className="sec-head">
             <div className="left">
-              <span className="eyebrow">Group Stage</span>
-              <h2>48개국 · <span className="kr">참가국</span> 스쿼드</h2>
-              <p>조별 리그 참가국 전체 스쿼드와 선수 상세 정보를 확인하세요.</p>
+              <p className="eyebrow">Live &amp; Results</p>
+              <h2>지금 <span className="kr">진행 중인</span> 경기</h2>
+              <p>실시간 스코어와 경기 결과를 확인하세요.</p>
             </div>
-            <Link href="/squads" className="link-more">전체 보기 →</Link>
+            <Link href="/matches" className="link-more">
+              전체 경기
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </Link>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12 }}>
-            {(countries.length > 0 ? countries.slice(0, 16) : Array.from({ length: 16 })).map((item, i) => {
-              const country = item as Country | undefined
-              return country?.code ? (
-                <Link
-                  key={country.code}
-                  href={`/squads/${country.code.toLowerCase()}`}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 10, padding: '16px 12px',
-                    background: 'var(--surface)', border: '1px solid var(--line)',
-                    borderRadius: 15, textAlign: 'center',
-                    transition: 'border-color 0.18s, transform 0.18s',
-                  }}
-                >
-                  {country.flagUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={country.flagUrl} alt={country.name} style={{ width: 44, height: 30, objectFit: 'cover', borderRadius: 4 }} />
-                  ) : (
-                    <div style={{ width: 44, height: 30, background: 'var(--surface-2)', borderRadius: 4, display: 'grid', placeItems: 'center', fontSize: 10, color: 'var(--ink-3)' }}>
-                      {country.code}
-                    </div>
-                  )}
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-2)', lineHeight: 1.3 }}>{country.name}</span>
-                </Link>
-              ) : (
-                <div key={i} style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  gap: 10, padding: '16px 12px',
-                  background: 'var(--surface)', border: '1px solid var(--line)',
-                  borderRadius: 15,
-                }}>
-                  <div style={{ width: 44, height: 30, background: 'var(--surface-2)', borderRadius: 4 }} />
-                  <div style={{ width: 60, height: 12, background: 'var(--surface-2)', borderRadius: 4 }} />
-                </div>
-              )
-            })}
-          </div>
+          {recentMatches.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+              {recentMatches.map(m => <MatchCard key={m.fixtureId} match={m} />)}
+            </div>
+          ) : (
+            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
+              경기 일정을 불러오는 중입니다.
+            </div>
+          )}
         </div>
       </section>
 
-      {/* ── 통계 리더보드 ──────────────────────────────────────── */}
-      <section className="block" id="stats">
+      {/* ── Group Stage ───────────────────────────────────────── */}
+      <section className="block">
         <div className="wrap">
           <div className="sec-head">
             <div className="left">
-              <span className="eyebrow">Leaderboards</span>
-              <h2>대회 <span className="kr">통계</span> 리더보드</h2>
-              <p>득점, 도움까지. 매 경기 업데이트되는 PitchLog의 핵심 지표.</p>
+              <p className="eyebrow">Group Stage</p>
+              <h2>48개국 · <span className="kr">12개 조</span> 순위표</h2>
+              <p>조별 리그 현황과 각 팀의 승점을 확인하세요.</p>
             </div>
-            <Link href="/stats/top-scorers" className="link-more">전체 통계 →</Link>
+            <Link href="/standings" className="link-more">
+              전체 순위
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </Link>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-            {/* 득점 */}
-            <div>
-              <h3 style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 16 }}>
-                득점왕 · Scorers
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {topScorers.length > 0 ? topScorers.map((p, i) => (
-                  <Link
-                    key={p.playerId}
-                    href={`/players/${playerSlug(p.playerId, p.playerName)}`}
-                    className="lb-row"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <span className={`lb-rank${i === 0 ? ' gold' : ''}`}>{i + 1}</span>
-                    {p.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.photoUrl} alt={p.playerName} className="lb-av" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-                    ) : (
-                      <div className="lb-av"><span className="ini">{p.playerName.charAt(0)}</span></div>
-                    )}
-                    <div className="lb-meta">
-                      <div className="nm">{p.playerName}</div>
-                      <div className="sub">{p.nationality ?? '-'}</div>
-                    </div>
-                    <div className="lb-val">
-                      <div className="v">{p.goals ?? 0}</div>
-                      <div className="vl">Goals</div>
-                    </div>
-                  </Link>
-                )) : (
-                  <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '20px 0' }}>
-                    데이터 수집 후 표시됩니다
-                  </div>
-                )}
-              </div>
+          {standings.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {standings.map(g => <GroupCard key={g.groupName} group={g} />)}
             </div>
-
-            {/* 도움 */}
-            <div>
-              <h3 style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 16 }}>
-                도움왕 · Assists
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {topAssists.length > 0 ? topAssists.map((p, i) => (
-                  <Link
-                    key={p.playerId}
-                    href={`/players/${playerSlug(p.playerId, p.playerName)}`}
-                    className="lb-row"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <span className={`lb-rank${i === 0 ? ' gold' : ''}`}>{i + 1}</span>
-                    {p.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.photoUrl} alt={p.playerName} className="lb-av" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-                    ) : (
-                      <div className="lb-av"><span className="ini">{p.playerName.charAt(0)}</span></div>
-                    )}
-                    <div className="lb-meta">
-                      <div className="nm">{p.playerName}</div>
-                      <div className="sub">{p.nationality ?? '-'}</div>
-                    </div>
-                    <div className="lb-val">
-                      <div className="v">{p.assists ?? 0}</div>
-                      <div className="vl">Assists</div>
-                    </div>
-                  </Link>
-                )) : (
-                  <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '20px 0' }}>
-                    데이터 수집 후 표시됩니다
-                  </div>
-                )}
-              </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', height: 140 }} />
+              ))}
             </div>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* ── CTA Band ────────────────────────────────────────────── */}
+      {/* ── Leaderboards ──────────────────────────────────────── */}
+      <section className="block">
+        <div className="wrap">
+          <div className="sec-head">
+            <div className="left">
+              <p className="eyebrow">Leaderboards</p>
+              <h2>대회 통계 <span className="kr">리더보드</span></h2>
+              <p>이번 대회 득점 선두를 달리는 선수들.</p>
+            </div>
+            <Link href="/stats/top-scorers" className="link-more">
+              전체 순위
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </Link>
+          </div>
+
+          {topScorers.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 680 }}>
+              {topScorers.map((p, i) => (
+                <Link
+                  key={p.playerId}
+                  href={`/players/${playerSlug(p.playerId, p.playerName)}`}
+                  className="lb-row"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <span className={`lb-rank${i === 0 ? ' gold' : ''}`}>{i + 1}</span>
+                  {p.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.photoUrl} alt={p.playerName} className="lb-av" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
+                  ) : (
+                    <div className="lb-av"><span className="ini">{p.playerName.charAt(0)}</span></div>
+                  )}
+                  <div className="lb-meta">
+                    <div className="nm">{p.playerName}</div>
+                    <div className="sub">{[p.nationality, p.teamName].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  <div className="lb-val">
+                    <div className="v">{p.goals ?? 0}</div>
+                    <div className="vl">Goals</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
+              월드컵 통계 데이터를 집계 중입니다.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── CTA Band ──────────────────────────────────────────── */}
       <section className="cta-band">
         <div className="wrap">
-          <span className="eyebrow">Join PitchLog</span>
+          <p style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 16 }}>
+            PitchLog
+          </p>
           <h2 style={{
-            fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700,
-            fontSize: 'clamp(32px, 4.4vw, 54px)', letterSpacing: '-0.025em',
-            lineHeight: 1.02, marginTop: 14, marginBottom: 18,
+            fontFamily: "'Space Grotesk', sans-serif", fontWeight: 800,
+            fontSize: 'clamp(28px, 4vw, 48px)', letterSpacing: '-0.025em',
+            lineHeight: 1.06, marginBottom: 16, color: 'var(--ink)',
           }}>
             데이터로 보는 <span style={{ color: 'var(--gold)' }}>월드컵</span>,<br />
             지금 시작하세요
           </h2>
-          <p style={{ color: 'var(--ink-2)', fontSize: 16, maxWidth: 480, margin: '0 auto 30px' }}>
+          <p style={{ color: 'var(--ink-2)', fontSize: 15, maxWidth: 420, margin: '0 auto 28px', lineHeight: 1.65 }}>
             좋아하는 선수와 팀을 팔로우하고 경기 알림과 맞춤 통계 리포트를 받아보세요.
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/squads" className="btn btn-gold" style={{ padding: '13px 28px', fontSize: 15 }}>
-              스쿼드 탐색하기
-            </Link>
-            <Link href="/stats/top-scorers" className="btn btn-ghost" style={{ padding: '13px 28px', fontSize: 15 }}>
-              통계 보기
-            </Link>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/squads" className="btn btn-gold" style={{ padding: '12px 26px', fontSize: 14 }}>스쿼드 탐색하기</Link>
+            <Link href="/stats/top-scorers" className="btn btn-ghost" style={{ padding: '12px 26px', fontSize: 14 }}>통계 보기</Link>
           </div>
         </div>
       </section>
