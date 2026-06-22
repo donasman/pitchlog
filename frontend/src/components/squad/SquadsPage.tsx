@@ -22,36 +22,75 @@ function normName(s: string) {
 }
 
 interface CountryWithGroup extends Country {
-  resolvedGroup: string
-  groupRank: number
+  resolvedGroup: string   // "A"~"L" 또는 "미정"
+  groupRank: number       // standings 내 순위
 }
 
-// standings에서 Group A~L (1·2·4위) 매핑
-function buildGroupMapFromStandings(
-  standings: StandingGroup[]
+/**
+ * standings(Group A~L + Group Stage) × matches(teamApiId)로
+ * 전체 48개 팀의 teamName → { group, rank } 매핑을 구축.
+ *
+ * enrichWithThirdPlace 동일 로직:
+ *   1. Group A~L 팀의 teamApiId → group 매핑
+ *   2. Group Stage(3위 종합) 팀을 매치 상대팀 기준으로 조 추론
+ *   3. 최종적으로 normName(teamName) → { group, rank }
+ */
+function buildFullGroupMap(
+  standings: StandingGroup[],
+  matches: MatchSummary[],
 ): Map<string, { group: string; rank: number }> {
-  const map = new Map<string, { group: string; rank: number }>()
+  // Step 1: Group A~L 팀 → teamApiId 기반 조 매핑
+  const idToGroup  = new Map<number, string>()
+  const idToRank   = new Map<number, number>()
+  const nameToInfo = new Map<string, { group: string; rank: number }>()
+
   for (const sg of standings) {
-    if (sg.groupName === 'Group Stage') continue
-    const letter = sg.groupName.replace('Group ', '').trim()
+    if (!/^Group [A-L]$/.test(sg.groupName)) continue
+    const letter = sg.groupName.replace('Group ', '')
     sg.standings.forEach((entry, idx) => {
-      map.set(normName(entry.teamName), { group: letter, rank: idx + 1 })
+      if (entry.teamApiId != null) {
+        idToGroup.set(entry.teamApiId, letter)
+        idToRank.set(entry.teamApiId, idx + 1)
+      }
+      nameToInfo.set(normName(entry.teamName), { group: letter, rank: idx + 1 })
     })
   }
-  return map
-}
 
-// matches의 groupName으로 3위 팀 포함 전체 커버
-function buildGroupMapFromMatches(matches: MatchSummary[]): Map<string, string> {
-  const map = new Map<string, string>()
-  for (const m of matches) {
-    if (!m.groupName) continue
-    const letter = m.groupName.match(/Group\s+([A-L])\b/i)?.[1]?.toUpperCase()
-    if (!letter) continue
-    if (m.home.name) map.set(normName(m.home.name), letter)
-    if (m.away.name) map.set(normName(m.away.name), letter)
+  // Step 2: Group Stage(3위 종합) 팀을 매치 상대팀 기준으로 조 추론
+  const groupStage = standings.find(g => g.groupName === 'Group Stage')
+  if (groupStage) {
+    const gsIds = new Set(
+      groupStage.standings
+        .map(s => s.teamApiId)
+        .filter((id): id is number => id != null),
+    )
+
+    const gsIdToGroup = new Map<number, string>()
+
+    for (const match of matches) {
+      const homeId = match.home?.teamApiId
+      const awayId = match.away?.teamApiId
+      if (homeId == null || awayId == null) continue
+
+      if (gsIds.has(homeId) && idToGroup.has(awayId) && !gsIdToGroup.has(homeId)) {
+        gsIdToGroup.set(homeId, idToGroup.get(awayId)!)
+      }
+      if (gsIds.has(awayId) && idToGroup.has(homeId) && !gsIdToGroup.has(awayId)) {
+        gsIdToGroup.set(awayId, idToGroup.get(homeId)!)
+      }
+    }
+
+    // Group Stage 팀을 nameToInfo에 추가 (rank=3 고정)
+    for (const entry of groupStage.standings) {
+      if (entry.teamApiId == null) continue
+      const group = gsIdToGroup.get(entry.teamApiId)
+      if (group) {
+        nameToInfo.set(normName(entry.teamName), { group, rank: 3 })
+      }
+    }
   }
-  return map
+
+  return nameToInfo
 }
 
 export default async function SquadsPage() {
@@ -67,19 +106,17 @@ export default async function SquadsPage() {
     ])
   } catch { /* 빌드 시 API 없을 경우 빈 배열 */ }
 
-  const standingsMap = buildGroupMapFromStandings(standings)
-  const matchesMap   = buildGroupMapFromMatches(matches)
+  const groupMap = buildFullGroupMap(standings, matches)
 
   const enriched: CountryWithGroup[] = countries.map((c) => {
-    const norm = normName(c.name)
+    // 1) Country.groupName이 이미 있으면 그대로 (rank는 groupMap에서)
     if (c.groupName) {
-      const info = standingsMap.get(norm)
+      const info = groupMap.get(normName(c.name))
       return { ...c, resolvedGroup: c.groupName, groupRank: info?.rank ?? 99 }
     }
-    const sInfo = standingsMap.get(norm)
-    if (sInfo) return { ...c, resolvedGroup: sInfo.group, groupRank: sInfo.rank }
-    const mGroup = matchesMap.get(norm)
-    if (mGroup) return { ...c, resolvedGroup: mGroup, groupRank: 99 }
+    // 2) groupMap에서 이름 매칭
+    const info = groupMap.get(normName(c.name))
+    if (info) return { ...c, resolvedGroup: info.group, groupRank: info.rank }
     return { ...c, resolvedGroup: '미정', groupRank: 99 }
   })
 
