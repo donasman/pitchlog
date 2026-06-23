@@ -14,6 +14,10 @@ function kstDateStr(iso: string): string {
   return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
 }
 function kstTodayStr(): string { return kstDateStr(new Date().toISOString()) }
+function kstTimeStr(iso: string): string {
+  const d = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000)
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+}
 
 // ── Smart match selection (KST) ─────────────────────────────────
 function selectMatchesToShow(all: MatchSummary[]): { matches: MatchSummary[], label: string } {
@@ -60,11 +64,7 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
   const isLive     = isLiveStatus(match.statusShort) || match.statusShort === 'HT'
   const hasScore   = match.home.goals != null || match.away.goals != null
 
-  const timeStr = match.matchDate
-    ? new Date(match.matchDate).toLocaleTimeString('ko-KR', {
-        hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul',
-      })
-    : '미정'
+  const timeStr = match.matchDate ? kstTimeStr(match.matchDate) : '미정'
 
   const dayStr = match.matchDate
     ? (() => {

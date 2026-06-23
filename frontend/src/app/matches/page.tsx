@@ -16,6 +16,10 @@ function toKSTISO(iso: string): string {
 }
 function kstDateStr(iso: string): string { return toKSTISO(iso).slice(0, 10) }
 function kstTodayStr(): string { return kstDateStr(new Date().toISOString()) }
+function kstTimeStr(iso: string): string {
+  const d = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000)
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+}
 
 function relativeLabel(dateStr: string): string | null {
   const today = kstTodayStr()
@@ -50,11 +54,7 @@ function MatchCard({ match }: { match: MatchSummary }) {
   const hasScore   = match.home.goals != null || match.away.goals != null
   const letter     = groupLetter(match.groupName)
 
-  const timeStr = match.matchDate
-    ? new Date(match.matchDate).toLocaleTimeString('ko-KR', {
-        hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul',
-      })
-    : '미정'
+  const timeStr = match.matchDate ? kstTimeStr(match.matchDate) : '미정'
 
   return (
     <Link
