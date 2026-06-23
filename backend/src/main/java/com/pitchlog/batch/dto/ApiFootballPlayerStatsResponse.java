@@ -116,4 +116,12 @@ public record ApiFootballPlayerStatsResponse(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record DuelsStats(
             @JsonProperty("total") Integer total,
-            @JsonPr
+            @JsonProperty("won")   Integer won
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FoulsStats(
+            @JsonProperty("committed") Integer committed,
+            @JsonProperty("drawn")     Integer drawn
+    ) {}
+}

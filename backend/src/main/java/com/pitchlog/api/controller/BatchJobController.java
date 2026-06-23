@@ -135,4 +135,75 @@ public class BatchJobController {
     }
 
     /**
-     * syncWorldCupPlayersJob 재시작 — 429 등으
+     * syncWorldCupPlayersJob 재시작 — 429 등으로 중단된 경우 Step3부터 이어서 실행.
+     * Spring Batch가 COMPLETED Step은 건너뛰고 FAILED Step부터 재개한다.
+     *
+     * 사용 예:
+     *   POST http://localhost:8080/api/batch/restart-sync-players
+     */
+    @PostMapping("/restart-sync-players")
+    public ResponseEntity<Map<String, String>> restartSyncPlayers() {
+        try {
+            List<JobInstance> instances = jobExplorer.getJobInstances("syncWorldCupPlayersJob", 0, 10);
+            if (instances.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "NOT_FOUND",
+                        "message", "syncWorldCupPlayersJob 실행 이력이 없습니다. 먼저 /sync-players를 실행하세요."
+                ));
+            }
+
+            // 가장 최근 FAILED 실행 찾기
+            Optional<JobExecution> failedExecution = instances.stream()
+                    .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
+                    .filter(exec -> exec.getStatus() == BatchStatus.FAILED)
+                    .findFirst();
+
+            if (failedExecution.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "NO_FAILED_JOB",
+                        "message", "재시작할 FAILED 상태의 Job이 없습니다."
+                ));
+            }
+
+            long executionId = failedExecution.get().getId();
+            log.info("[BatchJobController] syncWorldCupPlayersJob 재시작 요청 (executionId={})", executionId);
+            Long newExecutionId = jobOperator.restart(executionId);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "RESTARTED",
+                    "message", "Job이 재시작됐습니다. 완료된 Step은 건너뜁니다.",
+                    "newExecutionId", String.valueOf(newExecutionId)
+            ));
+        } catch (Exception e) {
+            log.error("[BatchJobController] syncWorldCupPlayersJob 재시작 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "FAILED",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    // ─── 공통 헬퍼 ────────────────────────────────────────────────────────────
+
+    private ResponseEntity<Map<String, String>> runJob(Job job, String jobName) {
+        try {
+            JobParameters params = new JobParametersBuilder()
+                    .addLong("startedAt", System.currentTimeMillis())
+                    .toJobParameters();
+
+            log.info("[BatchJobController] {} 실행 요청", jobName);
+            jobLauncher.run(job, params);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "STARTED",
+                    "message", jobName + " 이 시작됐습니다. 로그를 확인하세요."
+            ));
+        } catch (Exception e) {
+            log.error("[BatchJobController] {} 실행 실패", jobName, e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "FAILED",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+}
