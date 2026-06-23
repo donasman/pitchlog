@@ -116,8 +116,4 @@ export default function LiveTicker() {
               </>
             )}
           </Link>
-        )
-      })}
-    </div>
-  )
-}
+    

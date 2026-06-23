@@ -7,8 +7,15 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ApiFootballPlayerStatsResponse(
-        @JsonProperty("response") List<PlayerStatsItem> response
+        @JsonProperty("response") List<PlayerStatsItem> response,
+        @JsonProperty("paging")   Paging paging
 ) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Paging(
+            @JsonProperty("current") Integer current,
+            @JsonProperty("total")   Integer total
+    ) {}
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PlayerStatsItem(
             @JsonProperty("player") PlayerDetail player,
@@ -109,12 +116,4 @@ public record ApiFootballPlayerStatsResponse(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record DuelsStats(
             @JsonProperty("total") Integer total,
-            @JsonProperty("won")   Integer won
-    ) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record FoulsStats(
-            @JsonProperty("committed") Integer committed,
-            @JsonProperty("drawn")     Integer drawn
-    ) {}
-}
+            @JsonPr

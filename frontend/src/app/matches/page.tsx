@@ -273,14 +273,4 @@ export default function MatchesPage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {byDate.get(dateStr)!.map((match) => (
-                    <MatchCard key={match.fixtureId} match={match} />
-                  ))}
-                </div>
-              </section>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
+                    <MatchCard key={match.

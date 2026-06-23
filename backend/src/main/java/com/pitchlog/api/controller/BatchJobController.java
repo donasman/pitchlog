@@ -1,5 +1,8 @@
 package com.pitchlog.api.controller;
 
+import com.pitchlog.batch.step.BackfillLineupsStep;
+import com.pitchlog.batch.step.FetchPlayerRatingsStep;
+import com.pitchlog.batch.step.FetchWorldCupPlayerStatsStep;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
@@ -39,6 +42,10 @@ public class BatchJobController {
     private final Job syncWorldCupPlayers;
     private final Job syncWorldCupPlayersLite;
     private final Job syncFinalSquad;
+    private final Job syncMatchResults;
+    private final BackfillLineupsStep backfillLineupsStep;
+    private final FetchPlayerRatingsStep fetchPlayerRatingsStep;
+    private final FetchWorldCupPlayerStatsStep fetchWorldCupPlayerStatsStep;
 
     /**
      * 전체 파이프라인 실행 (Step1→2→3→4)
@@ -70,75 +77,62 @@ public class BatchJobController {
     }
 
     /**
-     * syncWorldCupPlayersJob 재시작 — 429 등으로 중단된 경우 Step3부터 이어서 실행.
-     * Spring Batch가 COMPLETED Step은 건너뛰고 FAILED Step부터 재개한다.
-     *
-     * 사용 예:
-     *   POST http://localhost:8080/api/batch/restart-sync-players
+     * 과거 종료 경기 라인업 + 평점 백필 + 월드컵 선수 통계 수집 (3-Step 잡).
+     * 월드컵 진행 중 스케줄러 시작 전에 끝난 경기 데이터를 일괄 보완할 때 사용.
+     * API 콜 소모가 크므로 Pro 플랜 권장. Free 플랜은 경기 수에 따라 당일 한도 초과 가능.
      */
-    @PostMapping("/restart-sync-players")
-    public ResponseEntity<Map<String, String>> restartSyncPlayers() {
+    @PostMapping("/sync-match-results")
+    public ResponseEntity<Map<String, String>> syncMatchResults() {
+        return runJob(syncMatchResults, "syncMatchResultsJob");
+    }
+
+    /**
+     * 라인업 백필만 단독 실행 (평점/통계 수집 제외).
+     * lineup_entry가 없는 FT 경기에 대해서만 API 호출.
+     */
+    @PostMapping("/backfill-lineups")
+    public ResponseEntity<Map<String, String>> backfillLineups() {
         try {
-            List<JobInstance> instances = jobExplorer.getJobInstances("syncWorldCupPlayersJob", 0, 10);
-            if (instances.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "status", "NOT_FOUND",
-                        "message", "syncWorldCupPlayersJob 실행 이력이 없습니다. 먼저 /sync-players를 실행하세요."
-                ));
-            }
-
-            // 가장 최근 FAILED 실행 찾기
-            Optional<JobExecution> failedExecution = instances.stream()
-                    .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
-                    .filter(exec -> exec.getStatus() == BatchStatus.FAILED)
-                    .findFirst();
-
-            if (failedExecution.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "status", "NO_FAILED_JOB",
-                        "message", "재시작할 FAILED 상태의 Job이 없습니다."
-                ));
-            }
-
-            long executionId = failedExecution.get().getId();
-            log.info("[BatchJobController] syncWorldCupPlayersJob 재시작 요청 (executionId={})", executionId);
-            Long newExecutionId = jobOperator.restart(executionId);
-
-            return ResponseEntity.ok(Map.of(
-                    "status", "RESTARTED",
-                    "message", "Job이 재시작됐습니다. 완료된 Step은 건너뜁니다.",
-                    "newExecutionId", String.valueOf(newExecutionId)
-            ));
+            log.info("[BatchJobController] 라인업 백필 단독 실행 요청");
+            backfillLineupsStep.backfill();
+            return ResponseEntity.ok(Map.of("status", "OK", "message", "라인업 백필 완료. 로그를 확인하세요."));
         } catch (Exception e) {
-            log.error("[BatchJobController] syncWorldCupPlayersJob 재시작 실패", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "status", "FAILED",
-                    "message", e.getMessage()
-            ));
+            log.error("[BatchJobController] 라인업 백필 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "FAILED", "message", e.getMessage()));
         }
     }
 
-    // ─── 공통 헬퍼 ────────────────────────────────────────────────────────────
-
-    private ResponseEntity<Map<String, String>> runJob(Job job, String jobName) {
+    /**
+     * 선수 평점 수집만 단독 실행.
+     * lineup_entry는 있지만 rating이 없는 경기에 대해 API 호출.
+     */
+    @PostMapping("/refresh-player-ratings")
+    public ResponseEntity<Map<String, String>> refreshPlayerRatings() {
         try {
-            JobParameters params = new JobParametersBuilder()
-                    .addLong("startedAt", System.currentTimeMillis())
-                    .toJobParameters();
-
-            log.info("[BatchJobController] {} 실행 요청", jobName);
-            jobLauncher.run(job, params);
-
-            return ResponseEntity.ok(Map.of(
-                    "status", "STARTED",
-                    "message", jobName + " 이 시작됐습니다. 로그를 확인하세요."
-            ));
+            log.info("[BatchJobController] 선수 평점 수집 단독 실행 요청");
+            fetchPlayerRatingsStep.fetchAndRefresh();
+            return ResponseEntity.ok(Map.of("status", "OK", "message", "평점 수집 완료. 로그를 확인하세요."));
         } catch (Exception e) {
-            log.error("[BatchJobController] {} 실행 실패", jobName, e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "status", "FAILED",
-                    "message", e.getMessage()
-            ));
+            log.error("[BatchJobController] 선수 평점 수집 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "FAILED", "message", e.getMessage()));
         }
     }
-}
+
+    /**
+     * 월드컵 시즌 선수 통계 수집만 단독 실행.
+     * /players?league=1&season=2026 페이지네이션 (~8콜).
+     */
+    @PostMapping("/sync-wc-player-stats")
+    public ResponseEntity<Map<String, String>> syncWcPlayerStats() {
+        try {
+            log.info("[BatchJobController] 월드컵 선수 통계 수집 단독 실행 요청");
+            fetchWorldCupPlayerStatsStep.fetchAndRefresh();
+            return ResponseEntity.ok(Map.of("status", "OK", "message", "월드컵 선수 통계 수집 완료. 로그를 확인하세요."));
+        } catch (Exception e) {
+            log.error("[BatchJobController] 월드컵 선수 통계 수집 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "FAILED", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * syncWorldCupPlayersJob 재시작 — 429 등으

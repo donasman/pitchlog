@@ -206,10 +206,4 @@ export default function HomeMatchSection() {
       )}
 
       {!loading && shown.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {shown.map((m) => <MiniMatchCard key={m.fixtureId} match={m} />)}
-        </div>
-      )}
-    </section>
-  )
-}
+        <di
