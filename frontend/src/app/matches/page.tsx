@@ -10,15 +10,29 @@ import StatusBadge from '@/components/match/StatusBadge'
 import { isLive as isLiveStatus, isFinished as isFinishedStatus } from '@/lib/matchStatus'
 
 // ── KST date utils ──────────────────────────────────────────────
+// DB가 timezone 없이 UTC 값을 저장하므로 Z를 붙여 UTC로 강제 해석
+function toUtc(iso: string): string {
+  return iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z'
+}
 function toKSTISO(iso: string): string {
-  const d = new Date(iso)
+  const d = new Date(toUtc(iso))
   return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString()
 }
 function kstDateStr(iso: string): string { return toKSTISO(iso).slice(0, 10) }
 function kstTodayStr(): string { return kstDateStr(new Date().toISOString()) }
 function kstTimeStr(iso: string): string {
-  const d = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000)
+  const d = new Date(new Date(toUtc(iso)).getTime() + 9 * 60 * 60 * 1000)
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+}
+
+// ── 진행중 표시 보정: 킥오프 +2시간 지나면 FT로 간주 ─────────────
+const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'INT', 'LIVE'])
+function effectiveStatus(match: MatchSummary): string | null {
+  if (!match.statusShort || !LIVE_STATUSES.has(match.statusShort)) return match.statusShort
+  if (!match.matchDate) return match.statusShort
+  const kickoff = new Date(toUtc(match.matchDate)).getTime()
+  if (Date.now() > kickoff + 2 * 60 * 60 * 1000) return 'FT'
+  return match.statusShort
 }
 
 function relativeLabel(dateStr: string): string | null {
@@ -49,8 +63,9 @@ function groupLetter(groupName: string | null): string | null {
 
 // ── MatchCard ───────────────────────────────────────────────────
 function MatchCard({ match }: { match: MatchSummary }) {
-  const isFinished = isFinishedStatus(match.statusShort)
-  const isLive     = isLiveStatus(match.statusShort) || match.statusShort === 'HT'
+  const status     = effectiveStatus(match)
+  const isFinished = isFinishedStatus(status)
+  const isLive     = isLiveStatus(status) || status === 'HT'
   const hasScore   = match.home.goals != null || match.away.goals != null
   const letter     = groupLetter(match.groupName)
 
@@ -119,7 +134,7 @@ function MatchCard({ match }: { match: MatchSummary }) {
         ) : (
           <span style={{ fontSize: 13, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>vs</span>
         )}
-        <StatusBadge status={match.statusShort} elapsed={match.elapsed} />
+        <StatusBadge status={status} elapsed={match.elapsed} />
       </div>
 
       {/* Away */}
@@ -273,4 +288,14 @@ export default function MatchesPage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {byDate.get(dateStr)!.map((match) => (
-                    <MatchCard key={match.
+                    <MatchCard key={match.fixtureId} match={match} />
+                  ))}
+                </div>
+              </section>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

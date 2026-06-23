@@ -9,14 +9,28 @@ import StatusBadge from '@/components/match/StatusBadge'
 import { isLive as isLiveStatus, isFinished as isFinishedStatus } from '@/lib/matchStatus'
 
 // ── KST utils ───────────────────────────────────────────────────
+// DB가 timezone 없이 UTC 값을 저장하므로 Z를 붙여 UTC로 강제 해석
+function toUtc(iso: string): string {
+  return iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z'
+}
 function kstDateStr(iso: string): string {
-  const d = new Date(iso)
+  const d = new Date(toUtc(iso))
   return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
 }
 function kstTodayStr(): string { return kstDateStr(new Date().toISOString()) }
 function kstTimeStr(iso: string): string {
-  const d = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000)
+  const d = new Date(new Date(toUtc(iso)).getTime() + 9 * 60 * 60 * 1000)
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+}
+
+// ── 진행중 표시 보정: 킥오프 +2시간 지나면 FT로 간주 ─────────────
+const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'INT', 'LIVE'])
+function effectiveStatus(match: MatchSummary): string | null {
+  if (!match.statusShort || !LIVE_STATUSES.has(match.statusShort)) return match.statusShort ?? null
+  if (!match.matchDate) return match.statusShort
+  const kickoff = new Date(toUtc(match.matchDate)).getTime()
+  if (Date.now() > kickoff + 2 * 60 * 60 * 1000) return 'FT'
+  return match.statusShort
 }
 
 // ── Smart match selection (KST) ─────────────────────────────────
@@ -31,37 +45,38 @@ function selectMatchesToShow(all: MatchSummary[]): { matches: MatchSummary[], la
   const tomorrowMatches  = all.filter(m => m.matchDate && kstDateStr(m.matchDate) === tomorrow)
 
   const todayAllDone = todayMatches.length > 0 &&
-    todayMatches.every(m => isFinishedStatus(m.statusShort))
+    todayMatches.every(m => isFinishedStatus(effectiveStatus(m)))
 
   if (todayMatches.length === 0 && yesterdayMatches.length === 0) {
     const upcoming = all
       .filter(m => m.matchDate && m.statusShort === 'NS')
-      .sort((a, b) => new Date(a.matchDate!).getTime() - new Date(b.matchDate!).getTime())
+      .sort((a, b) => new Date(toUtc(a.matchDate!)).getTime() - new Date(toUtc(b.matchDate!)).getTime())
       .slice(0, 6)
     return { matches: upcoming, label: '다가오는 경기' }
   }
 
   const result: MatchSummary[] = []
-  result.push(...yesterdayMatches.filter(m => isFinishedStatus(m.statusShort)))
+  result.push(...yesterdayMatches.filter(m => isFinishedStatus(effectiveStatus(m))))
   result.push(...todayMatches)
   if (todayAllDone || todayMatches.length === 0) {
     result.push(...tomorrowMatches.filter(m => m.statusShort === 'NS'))
   }
   result.sort((a, b) => {
-    const ta = a.matchDate ? new Date(a.matchDate).getTime() : 0
-    const tb = b.matchDate ? new Date(b.matchDate).getTime() : 0
+    const ta = a.matchDate ? new Date(toUtc(a.matchDate)).getTime() : 0
+    const tb = b.matchDate ? new Date(toUtc(b.matchDate)).getTime() : 0
     return ta - tb
   })
 
-  const hasLive = result.some(m => isLiveStatus(m.statusShort) || m.statusShort === 'HT')
+  const hasLive = result.some(m => { const s = effectiveStatus(m); return isLiveStatus(s) || s === 'HT' })
   const label = hasLive ? '진행 중인 경기' : '오늘의 경기'
   return { matches: result, label }
 }
 
 // ── Mini MatchCard ──────────────────────────────────────────────
 function MiniMatchCard({ match }: { match: MatchSummary }) {
-  const isFinished = isFinishedStatus(match.statusShort)
-  const isLive     = isLiveStatus(match.statusShort) || match.statusShort === 'HT'
+  const status     = effectiveStatus(match)
+  const isFinished = isFinishedStatus(status)
+  const isLive     = isLiveStatus(status) || status === 'HT'
   const hasScore   = match.home.goals != null || match.away.goals != null
 
   const timeStr = match.matchDate ? kstTimeStr(match.matchDate) : '미정'
@@ -128,7 +143,7 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
         ) : (
           <span style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>vs</span>
         )}
-        <StatusBadge status={match.statusShort} elapsed={match.elapsed} />
+        <StatusBadge status={status} elapsed={match.elapsed} />
       </div>
 
       {/* Away */}
@@ -206,4 +221,10 @@ export default function HomeMatchSection() {
       )}
 
       {!loading && shown.length > 0 && (
-        <di
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {shown.map((m) => <MiniMatchCard key={m.fixtureId} match={m} />)}
+        </div>
+      )}
+    </section>
+  )
+}
