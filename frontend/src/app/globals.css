@@ -75,17 +75,17 @@
   --line:      rgba(255, 255, 255, 0.07);
   --line-2:    rgba(255, 255, 255, 0.11);
 
-  /* Green accent */
-  --gold:      #27c281;
-  --gold-dim:  #1fa36b;
-  --gold-soft: rgba(39, 194, 129, 0.11);
-  --gold-line: rgba(39, 194, 129, 0.28);
-  --gold-glow: rgba(39, 194, 129, 0.22);
-  --gold-fg:   #021a0e;
+  /* Blue accent (dark) */
+  --gold:      #3b82f6;
+  --gold-dim:  #2563eb;
+  --gold-soft: rgba(59, 130, 246, 0.12);
+  --gold-line: rgba(59, 130, 246, 0.30);
+  --gold-glow: rgba(59, 130, 246, 0.22);
+  --gold-fg:   #ffffff;
 
   /* Brand */
-  --brand-bg:  #0d1f15;
-  --brand-fg:  #27c281;
+  --brand-bg:  #1e3a5f;
+  --brand-fg:  #93c5fd;
 
   /* Nav */
   --topbar-bg: rgba(10, 10, 11, 0.92);
@@ -107,19 +107,19 @@
   --card-foreground:        240 5% 96%;
   --popover:                240 4% 7%;
   --popover-foreground:     240 5% 96%;
-  --primary:                152 60% 47%;
+  --primary:                217 91% 60%;
   --primary-foreground:     0 0% 100%;
   --secondary:              240 4% 10%;
   --secondary-foreground:   240 5% 96%;
   --muted:                  240 4% 10%;
   --muted-foreground:       240 4% 46%;
-  --accent:                 152 60% 47%;
+  --accent:                 217 91% 60%;
   --accent-foreground:      0 0% 100%;
   --destructive:            0 62% 50%;
   --destructive-foreground: 0 0% 98%;
   --border:                 240 4% 11%;
   --input:                  240 4% 10%;
-  --ring:                   152 60% 47%;
+  --ring:                   217 91% 60%;
 }
 
 /* ── Reset ─────────────────────────────────────────────── */
@@ -243,8 +243,8 @@
 }
 .dark .hero {
   background:
-    radial-gradient(110% 80% at 85% 15%, rgba(39, 194, 129, 0.07), transparent 50%),
-    radial-gradient(70% 70% at 10% 88%, rgba(39, 194, 129, 0.05), transparent 55%),
+    radial-gradient(110% 80% at 85% 15%, rgba(59, 130, 246, 0.07), transparent 50%),
+    radial-gradient(70% 70% at 10% 88%, rgba(59, 130, 246, 0.05), transparent 55%),
     var(--bg);
 }
 .hero::before {
@@ -376,7 +376,7 @@ section.block { padding: 72px 0; border-bottom: 1px solid var(--line); }
   background: var(--bg);
 }
 .dark .cta-band {
-  background: radial-gradient(60% 100% at 50% 0%, rgba(39, 194, 129, 0.06), transparent 55%),
+  background: radial-gradient(60% 100% at 50% 0%, rgba(59, 130, 246, 0.06), transparent 55%),
               var(--bg);
 }
 
@@ -461,7 +461,7 @@ section.block { padding: 72px 0; border-bottom: 1px solid var(--line); }
   box-shadow: 0 12px 32px rgba(0,0,0,0.12);
 }
 .dark .float-chip {
-  background: rgba(20,40,20,0.82);
+  background: rgba(15,30,60,0.82);
   backdrop-filter: blur(10px);
   box-shadow: 0 18px 40px rgba(0,0,0,0.5);
 }

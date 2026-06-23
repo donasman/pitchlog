@@ -107,7 +107,7 @@ export default function LiveTicker() {
                 </span>
                 <b>{awayAbbr}</b>
                 {kind === 'live' ? (
-                  <span className="min">{match.elapsed}&apos;</span>
+                  <span className="min" style={{ color: 'var(--live)', fontWeight: 700 }}>LIVE</span>
                 ) : (
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'var(--ink-3)' }}>
                     FT

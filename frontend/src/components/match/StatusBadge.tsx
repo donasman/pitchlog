@@ -47,9 +47,10 @@ export default function StatusBadge({ status, elapsed, size = 'sm' }: StatusBadg
 
   if (isLive(status)) {
     return (
-      <span className={cn('inline-flex items-center font-bold text-green-400 bg-green-400/10 border border-green-400/30 rounded-full', p.gap, p.box)}>
-        <span className={cn('rounded-full bg-green-400 animate-pulse', p.dot)} />
-        {elapsed != null ? `${elapsed}'` : p.live}
+      <span className={cn('inline-flex items-center font-bold rounded-full', p.gap, p.box)}
+        style={{ color: 'var(--live)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)' }}>
+        <span className={cn('rounded-full animate-pulse', p.dot)} style={{ background: 'var(--live)' }} />
+        {p.live}
       </span>
     )
   }
