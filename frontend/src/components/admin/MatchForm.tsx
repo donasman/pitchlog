@@ -37,9 +37,14 @@ export default function MatchForm({ countries, initial, fixtureId }: Props) {
 
   const [round, setRound] = useState(initial?.round ?? 'Group Stage - 1')
   const [groupName, setGroupName] = useState(initial?.groupName ?? '')
-  const [matchDate, setMatchDate] = useState(
-    initial?.matchDate ? initial.matchDate.slice(0, 16) : ''
-  )
+  const [matchDate, setMatchDate] = useState(() => {
+    // DB는 UTC 저장 → input 표시용으로 KST 변환
+    if (!initial?.matchDate) return ''
+    const utcIso = initial.matchDate.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(initial.matchDate)
+      ? initial.matchDate
+      : initial.matchDate + 'Z'
+    return new Date(new Date(utcIso).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 16)
+  })
   const [venueName, setVenueName] = useState(initial?.venueName ?? '')
   const [venueCity, setVenueCity] = useState(initial?.venueCity ?? '')
   const [statusShort, setStatusShort] = useState(initial?.statusShort ?? 'NS')
@@ -71,9 +76,13 @@ export default function MatchForm({ countries, initial, fixtureId }: Props) {
     setError(null)
 
     const statusLabel = STATUSES.find((s) => s.value === statusShort)?.label ?? statusShort
+    // datetime-local input은 KST 기준 입력 → UTC로 변환해서 전송 (DB는 UTC 저장)
+    const matchDateUtc = matchDate
+      ? new Date(new Date(matchDate).getTime() - 9 * 60 * 60 * 1000).toISOString().slice(0, 19)
+      : null
     const body = {
       round,
-      matchDate: matchDate || null,
+      matchDate: matchDateUtc,
       venueName: venueName || null,
       venueCity: venueCity || null,
       statusShort,
@@ -134,7 +143,7 @@ export default function MatchForm({ countries, initial, fixtureId }: Props) {
       {/* 날짜 + 상태 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">경기 일시 (UTC)</label>
+          <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">경기 일시 (KST 한국시간)</label>
           <input type="datetime-local" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} className={field} />
         </div>
         <div>

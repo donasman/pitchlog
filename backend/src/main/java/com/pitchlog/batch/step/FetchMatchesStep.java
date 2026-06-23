@@ -82,9 +82,10 @@ public class FetchMatchesStep {
         var status  = fixture.status();
         var venue   = fixture.venue();
 
-        // ISO 8601 날짜 파싱 (effectively final — 람다 캡처 가능)
+        // ISO 8601 날짜 파싱 — UTC로 정규화 후 LocalDateTime 저장 (effectively final — 람다 캡처 가능)
+        // API-Football은 offset 포함 ISO 8601 반환 → UTC 기준으로 변환해야 DB 저장값이 일관됨
         final java.time.LocalDateTime matchDate = fixture.date() != null
-                ? OffsetDateTime.parse(fixture.date()).toLocalDateTime()
+                ? OffsetDateTime.parse(fixture.date()).withOffsetSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime()
                 : null;
 
         // round에서 groupName 추출: "Group Stage - 1" → group은 별도 없음, DB에 round 그대로 저장

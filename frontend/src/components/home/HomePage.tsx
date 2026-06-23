@@ -460,4 +460,18 @@ export default async function HomePage() {
             fontSize: 'clamp(28px, 4vw, 48px)', letterSpacing: '-0.025em',
             lineHeight: 1.06, marginBottom: 16, color: 'var(--ink)',
           }}>
-            데이터로 보는 <s
+            데이터로 보는 <span style={{ color: 'var(--gold)' }}>월드컵</span>,<br />
+            지금 시작하세요
+          </h2>
+          <p style={{ color: 'var(--ink-2)', fontSize: 15, maxWidth: 420, margin: '0 auto 28px', lineHeight: 1.65 }}>
+            좋아하는 선수와 팀을 팔로우하고 경기 알림과 맞춤 통계 리포트를 받아보세요.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/squads" className="btn btn-gold" style={{ padding: '12px 26px', fontSize: 14 }}>스쿼드 탐색하기</Link>
+            <Link href="/stats" className="btn btn-ghost" style={{ padding: '12px 26px', fontSize: 14 }}>통계 보기</Link>
+          </div>
+        </div>
+      </section>
+    </>
+  )
+}

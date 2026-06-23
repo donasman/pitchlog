@@ -17,6 +17,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         default_batch_fetch_size: 100
+        jdbc:
+          time_zone: UTC  # LocalDateTime을 항상 UTC로 저장/읽기 (JVM timezone 무관)
 
   batch:
     job:

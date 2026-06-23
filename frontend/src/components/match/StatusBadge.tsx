@@ -69,4 +69,6 @@ export default function StatusBadge({ status, elapsed, size = 'sm' }: StatusBadg
     )
   }
   return p.notStarted ? (
-    <span className={cn('text-muted-foreground', size === 'sm' ? 'text-xs'
+    <span className={cn('text-muted-foreground', size === 'sm' ? 'text-xs' : 'text-sm')}>{p.notStarted}</span>
+  ) : null
+}

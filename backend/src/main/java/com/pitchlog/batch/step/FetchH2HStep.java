@@ -111,7 +111,7 @@ public class FetchH2HStep {
             LocalDateTime matchDate = null;
             if (item.fixture().date() != null) {
                 try {
-                    matchDate = OffsetDateTime.parse(item.fixture().date()).toLocalDateTime();
+                    matchDate = OffsetDateTime.parse(item.fixture().date()).withOffsetSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime();
                 } catch (Exception ignored) {}
             }
 
