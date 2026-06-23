@@ -124,7 +124,7 @@ export default async function MatchDetailPage({ params }: Props) {
             <span>
               {matchDate ? formatMatchDateLong(match.matchDate) : 'TBD'}
               {matchDate && (
-                <span className="ml-2">{formatMatchTime(match.matchDate, 'en-US')}</span>
+                <span className="ml-2">{formatMatchTime(match.matchDate)}</span>
               )}
             </span>
           </div>
