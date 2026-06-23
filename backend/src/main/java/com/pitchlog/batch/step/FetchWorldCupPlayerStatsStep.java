@@ -220,4 +220,3 @@ public class FetchWorldCupPlayerStatsStep {
         catch (NumberFormatException e) { return null; }
     }
 }
-                                          
