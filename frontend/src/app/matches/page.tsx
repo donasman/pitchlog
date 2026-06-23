@@ -63,10 +63,13 @@ function MatchCard({ match }: { match: MatchSummary }) {
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '13px 16px',
         background: 'var(--surface)',
-        border: `1px solid ${isLive ? 'var(--gold-line)' : 'var(--line)'}`,
+        border: `0.5px solid ${isLive ? 'var(--gold-line)' : 'var(--line)'}`,
         borderRadius: 12,
+        boxShadow: isLive
+          ? '0 0 0 1px var(--gold-line), 0 2px 8px rgba(0,0,0,0.06)'
+          : '0 1px 3px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.03)',
         textDecoration: 'none',
-        transition: 'border-color 0.15s, background 0.15s',
+        transition: 'box-shadow 0.15s, border-color 0.15s',
       }}
     >
       {/* Group badge + time */}

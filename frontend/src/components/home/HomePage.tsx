@@ -211,12 +211,7 @@ export default async function HomePage() {
   // Group Stage 3위 팀을 각 조에 삽입 후 Group Stage 카드는 제외
   const groupStandings = enrichWithThirdPlace(standings, matches)
 
-  const sortedMatches = [...matches].sort((a, b) => {
-    const aLive = LIVE_STATUS.has(a.statusShort ?? '') ? 0 : a.statusShort === 'FT' ? 1 : 2
-    const bLive = LIVE_STATUS.has(b.statusShort ?? '') ? 0 : b.statusShort === 'FT' ? 1 : 2
-    return aLive - bLive
-  })
-  const recentMatches = sortedMatches.slice(0, 4)
+  const liveCount = matches.filter(m => LIVE_STATUS.has(m.statusShort ?? '')).length
 
   return (
     <>
@@ -270,15 +265,21 @@ export default async function HomePage() {
 
               <div className="stats-strip">
                 <div className="stat-item">
-                  <div className="stat-num">{countries.length > 0 ? `${countries.length}개국` : '—'}</div>
+                  <div className="stat-num">{countries.length > 0 ? countries.length : '48'}</div>
                   <div className="stat-lab">Nations</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-num">{countries.length > 0 ? countries.length * 26 : '—'}</div>
+                  <div className="stat-num">{countries.length > 0 ? countries.length * 26 : '736'}</div>
                   <div className="stat-lab">Players</div>
                 </div>
+                {liveCount > 0 && (
+                  <div className="stat-item">
+                    <div className="stat-num" style={{ color: 'var(--live)' }}>{liveCount}</div>
+                    <div className="stat-lab" style={{ color: 'var(--live)', opacity: 0.8 }}>Live Now</div>
+                  </div>
+                )}
                 <div className="stat-item">
-                  <div className="stat-num">{matches.length > 0 ? matches.length : '—'}</div>
+                  <div className="stat-num">{matches.length > 0 ? matches.length : '104'}</div>
                   <div className="stat-lab">Matches</div>
                 </div>
               </div>
@@ -353,82 +354,98 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Group Stage ───────────────────────────────────────── */}
+      {/* ── Data Hub: 득점 순위 + 조별 순위 (2컬럼) ─────────────── */}
       <section className="block">
         <div className="wrap">
-          <div className="sec-head">
-            <div className="left">
-              <p className="eyebrow">Group Stage</p>
-              <h2>{countries.length > 0 ? `${countries.length}개국` : "—"} · <span className="kr">{groupStandings.length > 0 ? `${groupStandings.length}개 조` : "—"}</span> 순위표</h2>
-              <p>조별 리그 현황과 각 팀의 승점을 확인하세요.</p>
-            </div>
-            <Link href="/standings" className="link-more">
-              전체 순위
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </Link>
-          </div>
-
-          {groupStandings.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-              {groupStandings.map(g => <GroupCard key={g.groupName} group={g} />)}
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', height: 140 }} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── Leaderboards ──────────────────────────────────────── */}
-      <section className="block">
-        <div className="wrap">
-          <div className="sec-head">
-            <div className="left">
-              <p className="eyebrow">Leaderboards</p>
-              <h2>대회 통계 <span className="kr">리더보드</span></h2>
-              <p>이번 대회 득점 선두를 달리는 선수들.</p>
-            </div>
-            <Link href="/stats/top-scorers" className="link-more">
-              전체 순위
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </Link>
-          </div>
-
-          {topScorers.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 680 }}>
-              {topScorers.map((p, i) => (
-                <Link
-                  key={p.playerId}
-                  href={`/players/${playerSlug(p.playerId, p.playerName)}`}
-                  className="lb-row"
-                  style={{ textDecoration: 'none' }}
-                >
-                  <span className={`lb-rank${i === 0 ? ' gold' : ''}`}>{i + 1}</span>
-                  {p.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.photoUrl} alt={p.playerName} className="lb-av" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
-                  ) : (
-                    <div className="lb-av"><span className="ini">{p.playerName.charAt(0)}</span></div>
-                  )}
-                  <div className="lb-meta">
-                    <div className="nm">{p.playerName}</div>
-                    <div className="sub">{[p.nationality, p.teamName].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  <div className="lb-val">
-                    <div className="v">{p.goals ?? 0}</div>
-                    <div className="vl">Goals</div>
-                  </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 40,
+            alignItems: 'start',
+          }}
+            className="home-two-col"
+          >
+            {/* 좌: 득점 순위 */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div>
+                  <p className="eyebrow" style={{ marginBottom: 4 }}>Leaderboard</p>
+                  <h2 style={{
+                    fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700,
+                    fontSize: 'clamp(20px, 2.4vw, 28px)', letterSpacing: '-0.02em', color: 'var(--ink)',
+                  }}>득점 순위</h2>
+                </div>
+                <Link href="/stats" className="link-more" style={{ fontSize: 11 }}>
+                  전체 보기
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </Link>
-              ))}
+              </div>
+
+              {topScorers.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {topScorers.map((p, i) => (
+                    <Link
+                      key={p.playerId}
+                      href={`/players/${playerSlug(p.playerId, p.playerName)}`}
+                      className="lb-row"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <span className={`lb-rank${i === 0 ? ' gold' : ''}`}>{i + 1}</span>
+                      {p.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.photoUrl} alt={p.playerName} className="lb-av" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
+                      ) : (
+                        <div className="lb-av"><span className="ini">{p.playerName.charAt(0)}</span></div>
+                      )}
+                      <div className="lb-meta">
+                        <div className="nm">{p.playerName}</div>
+                        <div className="sub">{[p.nationality, p.teamName].filter(Boolean).join(' · ')}</div>
+                      </div>
+                      <div className="lb-val">
+                        <div className="v">{p.goals ?? 0}</div>
+                        <div className="vl">Goals</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} style={{ height: 62, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--line)', opacity: 0.6 }} />
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
-              월드컵 통계 데이터를 집계 중입니다.
+
+            {/* 우: 조별 순위 */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div>
+                  <p className="eyebrow" style={{ marginBottom: 4 }}>Group Stage</p>
+                  <h2 style={{
+                    fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700,
+                    fontSize: 'clamp(20px, 2.4vw, 28px)', letterSpacing: '-0.02em', color: 'var(--ink)',
+                  }}>조별 순위</h2>
+                </div>
+                <Link href="/standings" className="link-more" style={{ fontSize: 11 }}>
+                  전체 보기
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </Link>
+              </div>
+
+              {groupStandings.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {groupStandings.slice(0, 6).map(g => <GroupCard key={g.groupName} group={g} />)}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', height: 130 }} />
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </section>
 
@@ -451,7 +468,7 @@ export default async function HomePage() {
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/squads" className="btn btn-gold" style={{ padding: '12px 26px', fontSize: 14 }}>스쿼드 탐색하기</Link>
-            <Link href="/stats/top-scorers" className="btn btn-ghost" style={{ padding: '12px 26px', fontSize: 14 }}>통계 보기</Link>
+            <Link href="/stats" className="btn btn-ghost" style={{ padding: '12px 26px', fontSize: 14 }}>통계 보기</Link>
           </div>
         </div>
       </section>
