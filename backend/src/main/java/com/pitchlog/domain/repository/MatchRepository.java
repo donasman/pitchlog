@@ -43,11 +43,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     @Query("SELECT COUNT(m) > 0 FROM Match m WHERE m.statusShort = 'NS' AND m.matchDate BETWEEN :from AND :to")
     boolean existsPreMatchWithin(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
-    /**
-     * 라인업 폴링 대상 경기 조회.
-     * - NS 상태이면서 matchDate가 from~to 범위 (킥오프 1시간 전 ~ 1시간 후)
-     * - 킥오프 직후 라인업 미확정 경기까지 포함
-     */
+    /** 라인업 폴링 대상: 킥오프 1시간 전 ~ 1시간 후 NS 경기 */
     @Query("""
             SELECT m FROM Match m
             WHERE m.statusShort = 'NS'
@@ -55,4 +51,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             ORDER BY m.matchDate ASC
             """)
     List<Match> findPreMatchOrJustStarted(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** 현재 진행 중인 경기 목록 (LIVE 모드 라인업 재시도용) */
+    List<Match> findByStatusShortIn(List<String> statuses);
 }
