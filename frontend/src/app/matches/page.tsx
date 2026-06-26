@@ -10,7 +10,6 @@ import StatusBadge from '@/components/match/StatusBadge'
 import { isLive as isLiveStatus, isFinished as isFinishedStatus } from '@/lib/matchStatus'
 
 // ── KST date utils ──────────────────────────────────────────────
-// DB가 timezone 없이 UTC 값을 저장하므로 Z를 붙여 UTC로 강제 해석
 function toUtc(iso: string): string {
   return iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z'
 }
@@ -22,11 +21,11 @@ function kstDateStr(iso: string): string { return toKSTISO(iso).slice(0, 10) }
 function kstTodayStr(): string { return kstDateStr(new Date().toISOString()) }
 function kstTimeStr(iso: string): string {
   const d = new Date(new Date(toUtc(iso)).getTime() + 9 * 60 * 60 * 1000)
-  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+  return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0')
 }
 
-// ── 진행중 표시 보정: 킥오프 +2시간 지나면 FT로 간주 ─────────────
 const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'INT', 'LIVE'])
+
 function effectiveStatus(match: MatchSummary): string | null {
   if (!match.statusShort || !LIVE_STATUSES.has(match.statusShort)) return match.statusShort
   if (!match.matchDate) return match.statusShort
@@ -50,35 +49,32 @@ function formatDateHeader(dateStr: string): string {
   const rel = relativeLabel(dateStr)
   const d = new Date(dateStr + 'T00:00:00+09:00')
   const dayNames = ['일', '월', '화', '수', '목', '금', '토']
-  const base = `${d.getMonth() + 1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`
-  return rel ? `${rel} · ${base}` : base
+  const base = (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + dayNames[d.getDay()] + ')'
+  return rel ? rel + ' · ' + base : base
 }
 
-// ── Group letter helper ─────────────────────────────────────────
 function groupLetter(groupName: string | null): string | null {
   if (!groupName) return null
   const m = groupName.match(/Group\s+([A-L])\b/i)
   return m ? m[1].toUpperCase() : null
 }
 
-// ── MatchCard ───────────────────────────────────────────────────
 function MatchCard({ match }: { match: MatchSummary }) {
   const status     = effectiveStatus(match)
   const isFinished = isFinishedStatus(status)
   const isLive     = isLiveStatus(status) || status === 'HT'
   const hasScore   = match.home.goals != null || match.away.goals != null
   const letter     = groupLetter(match.groupName)
-
-  const timeStr = match.matchDate ? kstTimeStr(match.matchDate) : '미정'
+  const timeStr    = match.matchDate ? kstTimeStr(match.matchDate) : '미정'
 
   return (
     <Link
-      href={`/matches/${match.fixtureId}`}
+      href={'/matches/' + match.fixtureId}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '13px 16px',
         background: 'var(--surface)',
-        border: `0.5px solid ${isLive ? 'var(--gold-line)' : 'var(--line)'}`,
+        border: '0.5px solid ' + (isLive ? 'var(--gold-line)' : 'var(--line)'),
         borderRadius: 12,
         boxShadow: isLive
           ? '0 0 0 1px var(--gold-line), 0 2px 8px rgba(0,0,0,0.06)'
@@ -87,7 +83,6 @@ function MatchCard({ match }: { match: MatchSummary }) {
         transition: 'box-shadow 0.15s, border-color 0.15s',
       }}
     >
-      {/* Group badge + time */}
       <div style={{ width: 60, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
         {letter ? (
           <span style={{
@@ -96,20 +91,15 @@ function MatchCard({ match }: { match: MatchSummary }) {
             background: 'var(--gold)', color: 'var(--gold-fg)',
             fontFamily: 'Space Grotesk, sans-serif', fontWeight: 800, fontSize: 11,
             letterSpacing: '0.02em',
-          }}>
-            {letter}
-          </span>
+          }}>{letter}</span>
         ) : (
           <span style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace', textAlign: 'center' }}>
             {(match.round ?? '').replace('Group Stage - ', '').slice(0, 8)}
           </span>
         )}
-        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'var(--ink-3)' }}>
-          {timeStr}
-        </span>
+        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'var(--ink-3)' }}>{timeStr}</span>
       </div>
 
-      {/* Home */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7, minWidth: 0 }}>
         <span style={{
           fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -118,7 +108,6 @@ function MatchCard({ match }: { match: MatchSummary }) {
         <TeamLogo src={match.home.logo} className="w-7 h-7 flex-shrink-0" />
       </div>
 
-      {/* Score */}
       <div style={{ width: 72, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
         {hasScore ? (
           <div style={{
@@ -137,7 +126,6 @@ function MatchCard({ match }: { match: MatchSummary }) {
         <StatusBadge status={status} elapsed={match.elapsed} />
       </div>
 
-      {/* Away */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
         <TeamLogo src={match.away.logo} className="w-7 h-7 flex-shrink-0" />
         <span style={{
@@ -154,7 +142,6 @@ function MatchCard({ match }: { match: MatchSummary }) {
   )
 }
 
-// ── Page ────────────────────────────────────────────────────────
 export default function MatchesPage() {
   const [matches, setMatches]   = useState<MatchSummary[]>([])
   const [loading, setLoading]   = useState(true)
@@ -164,44 +151,35 @@ export default function MatchesPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) { setLoading(true); setError(false) }
     try {
-      const res = await fetch(`${API_BASE}/api/matches`, { cache: 'no-store' })
+      const res = await fetch(API_BASE + '/api/matches', { cache: 'no-store' })
       if (!res.ok) throw new Error()
       setMatches(await res.json())
-      if (!silent) setError(false)
     } catch { if (!silent) setError(true) }
     finally   { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  // Scroll to today section after data loads
   useEffect(() => {
     if (!loading && todayRef.current) {
       todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [loading])
 
-  // 자동 폴링: 라이브 경기 있으면 10초, 없으면 60초
+  // 동적 폴링: 라이브 있으면 10초, 없으면 60초, 탭 숨겨지면 중단
   useEffect(() => {
-    const hasLive = matches.some((m) => {
+    if (matches.length === 0) return
+    const hasLive = matches.some(m => {
       const s = effectiveStatus(m)
       return s != null && LIVE_STATUSES.has(s)
     })
     const interval = hasLive ? 10_000 : 60_000
-
-    const tick = () => {
-      if (document.visibilityState === 'visible') load(true)
-    }
-
+    const tick = () => { if (document.visibilityState === 'visible') load(true) }
     const id = setInterval(tick, interval)
     document.addEventListener('visibilitychange', tick)
-    return () => {
-      clearInterval(id)
-      document.removeEventListener('visibilitychange', tick)
-    }
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', tick) }
   }, [matches, load])
 
-  // Group by KST date
   const today = kstTodayStr()
   const dateOrder: string[] = []
   const byDate = new Map<string, MatchSummary[]>()
@@ -221,31 +199,28 @@ export default function MatchesPage() {
         subtitle="2026 FIFA 월드컵 · 미국 / 캐나다 / 멕시코"
       />
 
-      {/* 날짜 퀵점프 */}
       {!loading && !error && dateOrder.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 24, marginBottom: 4 }}>
           {dateOrder.map((d) => {
             const rel = relativeLabel(d)
             const label = rel ?? (() => {
               const dt = new Date(d + 'T00:00:00+09:00')
-              return `${dt.getMonth() + 1}/${dt.getDate()}`
+              return (dt.getMonth() + 1) + '/' + dt.getDate()
             })()
             const isToday = d === today
             return (
               <button
                 key={d}
-                onClick={() => document.getElementById(`date-${d}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                onClick={() => document.getElementById('date-' + d)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 style={{
                   padding: '5px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
-                  border: `1px solid ${isToday ? 'var(--gold)' : 'var(--line)'}`,
+                  border: '1px solid ' + (isToday ? 'var(--gold)' : 'var(--line)'),
                   background: isToday ? 'var(--gold-soft)' : 'var(--surface)',
                   color: isToday ? 'var(--gold)' : 'var(--ink-2)',
                   fontFamily: 'Space Grotesk, sans-serif', fontWeight: isToday ? 700 : 500,
                   transition: 'all 0.15s',
                 }}
-              >
-                {label}
-              </button>
+              >{label}</button>
             )
           })}
         </div>
@@ -282,17 +257,14 @@ export default function MatchesPage() {
             return (
               <section
                 key={dateStr}
-                id={`date-${dateStr}`}
+                id={'date-' + dateStr}
                 ref={isToday ? (el) => { todayRef.current = el } : undefined}
               >
-                {/* 날짜 헤더 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <span style={{
                     fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: 14,
                     color: isToday ? 'var(--gold)' : 'var(--ink)',
-                  }}>
-                    {formatDateHeader(dateStr)}
-                  </span>
+                  }}>{formatDateHeader(dateStr)}</span>
                   {isToday && (
                     <span style={{
                       padding: '2px 8px', borderRadius: 999,
@@ -302,11 +274,8 @@ export default function MatchesPage() {
                     }}>TODAY</span>
                   )}
                   <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-                  <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                    {byDate.get(dateStr)!.length}경기
-                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{byDate.get(dateStr)!.length}경기</span>
                 </div>
-
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {byDate.get(dateStr)!.map((match) => (
                     <MatchCard key={match.fixtureId} match={match} />
