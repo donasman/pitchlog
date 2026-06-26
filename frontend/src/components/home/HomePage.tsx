@@ -203,9 +203,10 @@ type ThirdPlaceEntry = StandingEntry & { groupLetter: string }
 /**
  * 각 그룹 A-L에서 rank=3 팀을 추출해 pts/GD/GF 기준으로 정렬.
  * "Group Stage" 그룹(API-Football 3위 종합)이 있으면 우선 사용.
+ * enrichWithThirdPlace와 동일한 매치 데이터 추론으로 조 알파벳을 결정.
  */
-function getThirdPlaceRankings(groups: StandingGroup[]): ThirdPlaceEntry[] {
-  // teamApiId → 조 알파벳 맵
+function getThirdPlaceRankings(groups: StandingGroup[], matches: MatchSummary[]): ThirdPlaceEntry[] {
+  // teamApiId → 조 알파벳 맵 (Group A-L 직접 소속 팀)
   const teamToLetter = new Map<number, string>()
   for (const group of groups) {
     const m = group.groupName.match(/^Group ([A-L])$/)
@@ -215,12 +216,27 @@ function getThirdPlaceRankings(groups: StandingGroup[]): ThirdPlaceEntry[] {
     }
   }
 
-  // "Group Stage" 종합 순위가 있으면 그대로 사용 (API가 이미 정렬)
+  // "Group Stage" 종합 순위 팀의 조를 매치 데이터로 추론 (enrichWithThirdPlace와 동일 로직)
   const groupStage = groups.find(g => g.groupName === 'Group Stage')
   if (groupStage && groupStage.standings.length > 0) {
+    const gsIds = new Set(
+      groupStage.standings.map(s => s.teamApiId).filter((id): id is number => id != null)
+    )
+    const gsTeamToLetter = new Map<number, string>()
+    for (const match of matches) {
+      const homeId = match.home?.teamApiId
+      const awayId = match.away?.teamApiId
+      if (homeId == null || awayId == null) continue
+      if (gsIds.has(homeId) && teamToLetter.has(awayId) && !gsTeamToLetter.has(homeId))
+        gsTeamToLetter.set(homeId, teamToLetter.get(awayId)!)
+      if (gsIds.has(awayId) && teamToLetter.has(homeId) && !gsTeamToLetter.has(awayId))
+        gsTeamToLetter.set(awayId, teamToLetter.get(homeId)!)
+    }
     return groupStage.standings.map(entry => ({
       ...entry,
-      groupLetter: entry.teamApiId != null ? (teamToLetter.get(entry.teamApiId) ?? '?') : '?',
+      groupLetter: entry.teamApiId != null
+        ? (teamToLetter.get(entry.teamApiId) ?? gsTeamToLetter.get(entry.teamApiId) ?? '?')
+        : '?',
     }))
   }
 
@@ -303,8 +319,8 @@ function getCurrentKnockoutRound(matches: MatchSummary[]): string | null {
 
 // ── 3위 순위 섹션 ────────────────────────────────────────────
 
-function ThirdPlaceSection({ groups }: { groups: StandingGroup[] }) {
-  const teams = getThirdPlaceRankings(groups)
+function ThirdPlaceSection({ groups, matches }: { groups: StandingGroup[], matches: MatchSummary[] }) {
+  const teams = getThirdPlaceRankings(groups, matches)
   if (teams.length === 0) return null
 
   // 2026 월드컵: 12개 조 중 상위 8팀이 16강 진출
@@ -619,7 +635,7 @@ export default async function HomePage() {
   const groupStandings = enrichWithThirdPlace(standings, matches)
   const liveCount = matches.filter(m => LIVE_STATUS.has(m.statusShort ?? '')).length
   const knockout = isKnockoutPhase(matches)
-  const thirdPlaceTeams = getThirdPlaceRankings(standings)
+  const thirdPlaceTeams = getThirdPlaceRankings(standings, matches)
   const showThirdPlace = !knockout && thirdPlaceTeams.length > 0
 
   return (
@@ -773,7 +789,7 @@ export default async function HomePage() {
             <div style={{ overflowX: 'auto' }}>
               {knockout
                 ? <TournamentBracketSection matches={matches} />
-                : <ThirdPlaceSection groups={standings} />
+                : <ThirdPlaceSection groups={standings} matches={matches} />
               }
             </div>
           </div>
