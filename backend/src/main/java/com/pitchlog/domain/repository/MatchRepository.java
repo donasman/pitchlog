@@ -54,4 +54,17 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     /** 현재 진행 중인 경기 목록 (LIVE 모드 라인업 재시도용) */
     List<Match> findByStatusShortIn(List<String> statuses);
+
+    /**
+     * 킥오프 시간이 이미 지났는데 DB 상태가 아직 NS인 경기 존재 여부.
+     * cutoff(최대 3시간 전) ~ now 사이에 킥오프 예정이었던 NS 경기를 감지해
+     * DB 갱신 전에도 LIVE 모드로 자동 진입하기 위해 사용.
+     */
+    @Query("""
+            SELECT COUNT(m) > 0 FROM Match m
+            WHERE m.statusShort = 'NS'
+              AND m.matchDate BETWEEN :cutoff AND :now
+            """)
+    boolean existsMatchShouldHaveStarted(@Param("cutoff") LocalDateTime cutoff,
+                                         @Param("now") LocalDateTime now);
 }

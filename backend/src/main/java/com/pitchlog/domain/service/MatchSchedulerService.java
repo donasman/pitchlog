@@ -91,9 +91,14 @@ public class MatchSchedulerService {
     @Scheduled(fixedDelay = 60_000)
     public void modeController() {
         try {
-            boolean hasLive = matchRepository.existsLiveMatch();
+            LocalDateTime now = LocalDateTime.now();
+
+            // DB에 이미 라이브 코드가 있거나, 킥오프 시간이 지난 NS 경기가 있으면 LIVE
+            boolean hasLive = matchRepository.existsLiveMatch()
+                    || matchRepository.existsMatchShouldHaveStarted(now.minusHours(3), now);
+
             boolean hasPreMatch = !hasLive && matchRepository.existsPreMatchWithin(
-                    LocalDateTime.now(), LocalDateTime.now().plusHours(1));
+                    now, now.plusHours(1));
 
             String targetMode = hasLive ? "LIVE" : (hasPreMatch ? "LINEUP" : "IDLE");
 
