@@ -18,6 +18,9 @@ function kstDateStr(iso: string): string {
   return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
 }
 function kstTodayStr(): string { return kstDateStr(new Date().toISOString()) }
+function kstYesterdayStr(): string {
+  return kstDateStr(new Date(Date.now() - 86400000).toISOString())
+}
 function kstTimeStr(iso: string): string {
   const d = new Date(new Date(toUtc(iso)).getTime() + 9 * 60 * 60 * 1000)
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
@@ -33,43 +36,63 @@ function effectiveStatus(match: MatchSummary): string | null {
   return match.statusShort
 }
 
-// ── Smart match selection (KST) ─────────────────────────────────
-function selectMatchesToShow(all: MatchSummary[]): { matches: MatchSummary[], label: string } {
+// ── 데이터 분리 ─────────────────────────────────────────────────
+interface SplitMatches {
+  upcoming: MatchSummary[]   // 오늘 NS + 라이브
+  finished: MatchSummary[]   // 어제 FT 경기
+  hasLive: boolean
+  upcomingLabel: string
+  // ESPN API 연동 대비: 마지막 갱신 시각을 외부에서 주입 가능하도록 확장 포인트
+}
+
+function splitMatches(all: MatchSummary[]): SplitMatches {
   const today     = kstTodayStr()
-  const now       = new Date()
-  const yesterday = kstDateStr(new Date(now.getTime() - 86400000).toISOString())
-  const tomorrow  = kstDateStr(new Date(now.getTime() + 86400000).toISOString())
+  const yesterday = kstYesterdayStr()
+  const tomorrow  = kstDateStr(new Date(Date.now() + 86400000).toISOString())
 
-  const todayMatches     = all.filter(m => m.matchDate && kstDateStr(m.matchDate) === today)
-  const yesterdayMatches = all.filter(m => m.matchDate && kstDateStr(m.matchDate) === yesterday)
-  const tomorrowMatches  = all.filter(m => m.matchDate && kstDateStr(m.matchDate) === tomorrow)
+  const todayMatches = all.filter(m => m.matchDate && kstDateStr(m.matchDate) === today)
+  const yesterdayFT  = all
+    .filter(m => m.matchDate && kstDateStr(m.matchDate) === yesterday)
+    .filter(m => isFinishedStatus(effectiveStatus(m)))
+    .sort((a, b) => new Date(toUtc(a.matchDate!)).getTime() - new Date(toUtc(b.matchDate!)).getTime())
 
-  const todayAllDone = todayMatches.length > 0 &&
-    todayMatches.every(m => isFinishedStatus(effectiveStatus(m)))
-
-  if (todayMatches.length === 0 && yesterdayMatches.length === 0) {
-    const upcoming = all
-      .filter(m => m.matchDate && m.statusShort === 'NS')
+  // 오늘 경기 없으면 내일 예정 표시
+  if (todayMatches.length === 0) {
+    const tomorrowNS = all
+      .filter(m => m.matchDate && kstDateStr(m.matchDate) === tomorrow && m.statusShort === 'NS')
       .sort((a, b) => new Date(toUtc(a.matchDate!)).getTime() - new Date(toUtc(b.matchDate!)).getTime())
-      .slice(0, 6)
-    return { matches: upcoming, label: '다가오는 경기' }
+    return {
+      upcoming: tomorrowNS,
+      finished: yesterdayFT,
+      hasLive: false,
+      upcomingLabel: '내일의 경기',
+    }
   }
 
-  const result: MatchSummary[] = []
-  result.push(...yesterdayMatches.filter(m => isFinishedStatus(effectiveStatus(m))))
-  result.push(...todayMatches)
-  if (todayAllDone || todayMatches.length === 0) {
-    result.push(...tomorrowMatches.filter(m => m.statusShort === 'NS'))
-  }
-  result.sort((a, b) => {
-    const ta = a.matchDate ? new Date(toUtc(a.matchDate)).getTime() : 0
-    const tb = b.matchDate ? new Date(toUtc(b.matchDate)).getTime() : 0
-    return ta - tb
+  // 오늘 경기: NS + 라이브만 (종료된 건 완료된 경기 섹션으로)
+  const todayNSAndLive = todayMatches
+    .filter(m => {
+      const s = effectiveStatus(m)
+      return s === 'NS' || isLiveStatus(s) || s === 'HT'
+    })
+    .sort((a, b) => new Date(toUtc(a.matchDate!)).getTime() - new Date(toUtc(b.matchDate!)).getTime())
+
+  // 오늘 종료된 경기도 완료 섹션에 포함
+  const todayFT = todayMatches
+    .filter(m => isFinishedStatus(effectiveStatus(m)))
+    .sort((a, b) => new Date(toUtc(a.matchDate!)).getTime() - new Date(toUtc(b.matchDate!)).getTime())
+
+  const hasLive = todayNSAndLive.some(m => {
+    const s = effectiveStatus(m)
+    return isLiveStatus(s) || s === 'HT'
   })
 
-  const hasLive = result.some(m => { const s = effectiveStatus(m); return isLiveStatus(s) || s === 'HT' })
-  const label = hasLive ? '진행 중인 경기' : '오늘의 경기'
-  return { matches: result, label }
+  return {
+    upcoming: todayNSAndLive,
+    finished: [...todayFT, ...yesterdayFT],
+    hasLive,
+    upcomingLabel: hasLive ? '진행 중인 경기' : '오늘의 경기',
+  }
 }
 
 // ── Mini MatchCard ──────────────────────────────────────────────
@@ -78,23 +101,7 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
   const isFinished = isFinishedStatus(status)
   const isLive     = isLiveStatus(status) || status === 'HT'
   const hasScore   = match.home.goals != null || match.away.goals != null
-
-  const timeStr = match.matchDate ? kstTimeStr(match.matchDate) : '미정'
-
-  const dayStr = match.matchDate
-    ? (() => {
-        const mDate = kstDateStr(match.matchDate)
-        const now   = new Date()
-        const today     = kstTodayStr()
-        const yesterday = kstDateStr(new Date(now.getTime() - 86400000).toISOString())
-        const tomorrow  = kstDateStr(new Date(now.getTime() + 86400000).toISOString())
-        if (mDate === today)     return '오늘'
-        if (mDate === yesterday) return '어제'
-        if (mDate === tomorrow)  return '내일'
-        const d = new Date(mDate + 'T00:00:00+09:00')
-        return `${d.getMonth() + 1}/${d.getDate()}`
-      })()
-    : ''
+  const timeStr    = match.matchDate ? kstTimeStr(match.matchDate) : '미정'
 
   return (
     <Link
@@ -112,10 +119,11 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
         transition: 'box-shadow 0.15s, border-color 0.15s',
       }}
     >
-      {/* Left: day + time */}
-      <div style={{ width: 48, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        <span style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>{dayStr}</span>
-        <span style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>{timeStr}</span>
+      {/* Time */}
+      <div style={{ width: 44, flexShrink: 0, textAlign: 'center' }}>
+        <span style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>
+          {timeStr}
+        </span>
       </div>
 
       {/* Home */}
@@ -133,7 +141,7 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '3px 8px', borderRadius: 7,
-            background: isLive ? 'rgba(39,194,129,0.12)' : 'var(--surface-2)',
+            background: isLive ? 'var(--gold-soft)' : 'var(--surface-2)',
             fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--ink)',
           }}>
             <span>{match.home.goals ?? 0}</span>
@@ -159,6 +167,7 @@ function MiniMatchCard({ match }: { match: MatchSummary }) {
 }
 
 // ── Section ─────────────────────────────────────────────────────
+// REFRESH_MS: ESPN API 연동 시 이 값을 줄이거나 WebSocket으로 교체 예정
 const REFRESH_MS = 5 * 60 * 1000
 
 export default function HomeMatchSection() {
@@ -181,50 +190,84 @@ export default function HomeMatchSection() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const { matches: shown, label } = selectMatchesToShow(matches)
+  const { upcoming, finished, hasLive, upcomingLabel } = splitMatches(matches)
 
   return (
-    <section>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <span className="eyebrow">LIVE &amp; RESULTS</span>
-        {lastUpdated && (
-          <span style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>
-            {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })} 기준
-          </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+
+      {/* ── 오늘의 경기 / 진행중 ── */}
+      <section>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <span className="eyebrow">{hasLive ? 'LIVE' : 'TODAY'}</span>
+          {lastUpdated && (
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>
+              {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })} 기준
+            </span>
+          )}
+          <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+          <Link href="/matches" style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>
+            전체 보기 →
+          </Link>
+        </div>
+
+        <h2 style={{
+          fontFamily: 'Space Grotesk, sans-serif', fontWeight: 800,
+          fontSize: 'clamp(20px, 3vw, 26px)', letterSpacing: '-0.03em',
+          color: 'var(--ink)', marginBottom: 12,
+        }}>
+          {upcomingLabel}
+        </h2>
+
+        {loading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} style={{ height: 56, borderRadius: 12, background: 'var(--surface-2)', opacity: 0.6 }} />
+            ))}
+          </div>
         )}
-        <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-        <Link href="/matches" style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>
-          전체 보기 →
-        </Link>
-      </div>
 
-      <h2 style={{
-        fontFamily: 'Space Grotesk, sans-serif', fontWeight: 800,
-        fontSize: 'clamp(22px, 3.5vw, 30px)', letterSpacing: '-0.03em',
-        color: 'var(--ink)', marginBottom: 20,
-      }}>
-        {label}
-      </h2>
+        {!loading && upcoming.length === 0 && (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
+            오늘 예정된 경기가 없습니다
+          </div>
+        )}
 
-      {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ height: 58, borderRadius: 12, background: 'var(--surface-2)', opacity: 0.6 }} />
-          ))}
-        </div>
+        {!loading && upcoming.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {upcoming.map(m => <MiniMatchCard key={m.fixtureId} match={m} />)}
+          </div>
+        )}
+      </section>
+
+      {/* ── 완료된 경기 (오늘 FT + 어제) ── */}
+      {!loading && finished.length > 0 && (
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            <span className="eyebrow">RESULTS</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+            {/* ESPN API 연동 시 여기에 자동 새로고침 상태 표시 예정 */}
+            <Link
+              href="/matches"
+              style={{ fontSize: 13, color: 'var(--ink-3)', fontWeight: 500, textDecoration: 'none' }}
+            >
+              더 보기 →
+            </Link>
+          </div>
+
+          <h2 style={{
+            fontFamily: 'Space Grotesk, sans-serif', fontWeight: 800,
+            fontSize: 'clamp(20px, 3vw, 26px)', letterSpacing: '-0.03em',
+            color: 'var(--ink)', marginBottom: 12,
+          }}>
+            완료된 경기
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {finished.map(m => <MiniMatchCard key={m.fixtureId} match={m} />)}
+          </div>
+        </section>
       )}
 
-      {!loading && shown.length === 0 && (
-        <div style={{ padding: '36px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
-          오늘 예정된 경기가 없습니다
-        </div>
-      )}
-
-      {!loading && shown.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {shown.map((m) => <MiniMatchCard key={m.fixtureId} match={m} />)}
-        </div>
-      )}
-    </section>
+    </div>
   )
 }
