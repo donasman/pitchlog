@@ -319,6 +319,25 @@ function getCurrentKnockoutRound(matches: MatchSummary[]): string | null {
 
 // ── 3위 순위 섹션 ────────────────────────────────────────────
 
+/** 특정 팀의 아직 시작 안 한 조별 경기 상대 목록 */
+function getRemainingOpponents(
+  teamId: number | null,
+  matches: MatchSummary[]
+): Array<{ name: string; logo: string | null }> {
+  if (teamId == null) return []
+  return matches
+    .filter(m => {
+      if (m.statusShort !== 'NS') return false
+      const r = (m.round ?? '') + (m.groupName ?? '')
+      if (!r.toLowerCase().includes('group')) return false
+      return m.home?.teamApiId === teamId || m.away?.teamApiId === teamId
+    })
+    .map(m => {
+      const opp = m.home?.teamApiId === teamId ? m.away : m.home
+      return { name: opp?.name ?? '', logo: opp?.logo ?? null }
+    })
+}
+
 function ThirdPlaceSection({ groups, matches }: { groups: StandingGroup[], matches: MatchSummary[] }) {
   const teams = getThirdPlaceRankings(groups, matches)
   if (teams.length === 0) return null
@@ -351,13 +370,13 @@ function ThirdPlaceSection({ groups, matches }: { groups: StandingGroup[], match
       {/* 컬럼 헤더 */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '28px 32px 1fr 32px 32px 32px 32px 44px 40px 72px',
+        gridTemplateColumns: '28px 32px 1fr 32px 32px 32px 32px 44px 40px 52px 72px',
         gap: 4,
         padding: '0 12px 8px',
         borderBottom: '1px solid var(--line)',
         marginBottom: 4,
       }}>
-        {['#', '조', '팀', 'P', 'W', 'D', 'L', '득실', 'Pts', ''].map((h, i) => (
+        {['#', '조', '팀', 'P', 'W', 'D', 'L', '득실', 'Pts', 'vs', ''].map((h, i) => (
           <span key={i} style={{
             fontSize: 10, fontFamily: 'Space Mono, monospace',
             color: 'var(--ink-3)', letterSpacing: '0.08em',
@@ -380,7 +399,7 @@ function ThirdPlaceSection({ groups, matches }: { groups: StandingGroup[], match
               key={team.teamApiId ?? i}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '28px 32px 1fr 32px 32px 32px 32px 44px 40px 72px',
+                gridTemplateColumns: '28px 32px 1fr 32px 32px 32px 32px 44px 40px 52px 72px',
                 gap: 4,
                 alignItems: 'center',
                 padding: '9px 12px',
@@ -441,6 +460,27 @@ function ThirdPlaceSection({ groups, matches }: { groups: StandingGroup[], match
                 color: advancing ? 'var(--gold)' : 'var(--ink-2)',
                 textAlign: 'center',
               }}>{team.points ?? 0}</span>
+
+              {/* 남은 경기 상대 국기 */}
+              {(() => {
+                const opps = getRemainingOpponents(team.teamApiId ?? null, matches)
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                    {opps.length === 0
+                      ? <span style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'Space Mono, monospace' }}>—</span>
+                      : opps.map((opp, oi) => opp.logo
+                          ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={oi} src={opp.logo} alt={opp.name} width={16} height={16}
+                                style={{ objectFit: 'contain', borderRadius: 2, flexShrink: 0 }}
+                                title={opp.name} />
+                            )
+                          : <div key={oi} style={{ width: 16, height: 16, borderRadius: 2, background: 'var(--surface-2)', flexShrink: 0 }} />
+                        )
+                    }
+                  </div>
+                )
+              })()}
 
               {/* 진출 뱃지 */}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -774,7 +814,10 @@ export default async function HomePage() {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px', height: 130 }} />
+                    <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: '16px', opacity: 0.6 }}>
+                      <div style={{ height: 16, borderRadius: 4, background: 'var(--line)', marginBottom: 12 }} />
+                      <div style={{ height: 12, borderRadius: 4, background: 'var(--line)', width: '60%' }} />
+                    </div>
                   ))}
                 </div>
               )}
@@ -798,17 +841,15 @@ export default async function HomePage() {
 
       <section className="cta-band">
         <div className="wrap">
-          <p style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 16 }}>PitchLog</p>
-          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 800, fontSize: 'clamp(28px, 4vw, 48px)', letterSpacing: '-0.025em', lineHeight: 1.06, marginBottom: 16, color: 'var(--ink)' }}>
-            데이터로 보는 <span style={{ color: 'var(--gold)' }}>월드컵</span>,<br />
+          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 'clamp(26px, 3.2vw, 40px)', letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 16 }}>
             지금 시작하세요
           </h2>
-          <p style={{ color: 'var(--ink-2)', fontSize: 15, maxWidth: 420, margin: '0 auto 28px', lineHeight: 1.65 }}>
-            좋아하는 선수와 팀을 팔로우하고 경기 알림과 맞춤 통계 리포트를 받아보세요.
+          <p style={{ fontSize: 15, color: 'var(--ink-2)', marginBottom: 28, maxWidth: 460 }}>
+            2026 FIFA 월드컵 모든 선수의 통계를 탐색하세요.
           </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/squads" className="btn btn-gold" style={{ padding: '12px 26px', fontSize: 14 }}>스쿼드 탐색하기</Link>
-            <Link href="/stats" className="btn btn-ghost" style={{ padding: '12px 26px', fontSize: 14 }}>통계 보기</Link>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Link href="/squads" className="btn btn-gold">참가국 스쿼드</Link>
+            <Link href="/matches" className="btn btn-ghost">경기 일정</Link>
           </div>
         </div>
       </section>

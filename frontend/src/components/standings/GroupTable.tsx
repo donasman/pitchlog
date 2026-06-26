@@ -60,7 +60,8 @@ export function GroupTable({ group, promotionCount = 2 }: GroupTableProps) {
       </div>
 
       {/* 테이블 */}
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             <th style={{ ...HEAD_STYLE, textAlign: 'left', width: 28 }}>#</th>
@@ -157,6 +158,7 @@ export function GroupTable({ group, promotionCount = 2 }: GroupTableProps) {
           })}
         </tbody>
       </table>
+      </div>
 
       {/* 범례 */}
       <div style={{
