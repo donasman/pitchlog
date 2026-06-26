@@ -161,14 +161,15 @@ export default function MatchesPage() {
   const [error, setError]       = useState(false)
   const todayRef                = useRef<HTMLElement | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(false)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) { setLoading(true); setError(false) }
     try {
       const res = await fetch(`${API_BASE}/api/matches`, { cache: 'no-store' })
       if (!res.ok) throw new Error()
       setMatches(await res.json())
-    } catch { setError(true) }
-    finally   { setLoading(false) }
+      if (!silent) setError(false)
+    } catch { if (!silent) setError(true) }
+    finally   { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -179,6 +180,26 @@ export default function MatchesPage() {
       todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [loading])
+
+  // 자동 폴링: 라이브 경기 있으면 10초, 없으면 60초
+  useEffect(() => {
+    const hasLive = matches.some((m) => {
+      const s = effectiveStatus(m)
+      return s != null && LIVE_STATUSES.has(s)
+    })
+    const interval = hasLive ? 10_000 : 60_000
+
+    const tick = () => {
+      if (document.visibilityState === 'visible') load(true)
+    }
+
+    const id = setInterval(tick, interval)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [matches, load])
 
   // Group by KST date
   const today = kstTodayStr()
@@ -241,7 +262,7 @@ export default function MatchesPage() {
       {error && !loading && (
         <div style={{ padding: '60px 0', textAlign: 'center' }}>
           <p style={{ color: 'var(--ink-3)', marginBottom: 12 }}>경기 일정을 불러오지 못했습니다</p>
-          <button onClick={load} style={{
+          <button onClick={() => load()} style={{
             padding: '8px 20px', borderRadius: 8, border: '1px solid var(--line)',
             background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer', fontSize: 14,
           }}>다시 시도</button>
