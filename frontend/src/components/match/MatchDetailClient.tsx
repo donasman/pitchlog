@@ -26,7 +26,6 @@ export default function MatchDetailClient({ fixtureId }: Props) {
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState(false)
 
-  // 최초 전체 로드 (예측·H2H 포함)
   const loadFull = useCallback(async () => {
     setLoading(true); setError(false)
     try {
@@ -35,7 +34,6 @@ export default function MatchDetailClient({ fixtureId }: Props) {
       const data: MatchDetail = await res.json()
       setMatch(data)
 
-      // NS 경기만 예측 로드
       if (data.statusShort === 'NS') {
         fetch(`${API_BASE}/api/predictions/${fixtureId}`)
           .then(r => r.ok ? r.json() : null)
@@ -43,7 +41,6 @@ export default function MatchDetailClient({ fixtureId }: Props) {
           .catch(() => {})
       }
 
-      // H2H
       if (data.home.teamApiId && data.away.teamApiId) {
         fetch(`${API_BASE}/api/h2h/${data.home.teamApiId}/${data.away.teamApiId}`)
           .then(r => r.ok ? r.json() : [])
@@ -57,7 +54,6 @@ export default function MatchDetailClient({ fixtureId }: Props) {
     }
   }, [fixtureId])
 
-  // 라이브 폴링용 (스코어+라인업만 갱신, 화면 깜빡임 없음)
   const loadSilent = useCallback(async () => {
     if (document.visibilityState !== 'visible') return
     try {
@@ -69,15 +65,14 @@ export default function MatchDetailClient({ fixtureId }: Props) {
 
   useEffect(() => { loadFull() }, [loadFull])
 
-  // 자동 폴링: 라이브면 10초, 라인업 대기(NS)면 30초, 종료면 중단
   useEffect(() => {
     if (!match) return
 
-    const isLive    = LIVE_STATUSES.has(match.statusShort ?? '')
+    const isLive     = LIVE_STATUSES.has(match.statusShort ?? '')
     const isPreMatch = match.statusShort === 'NS'
     const isFinished = isFinishedStatus(match.statusShort)
 
-    if (isFinished) return  // 종료된 경기는 폴링 불필요
+    if (isFinished) return
 
     const interval = isLive ? 10_000 : isPreMatch ? 30_000 : 60_000
     const id = setInterval(loadSilent, interval)
@@ -86,7 +81,7 @@ export default function MatchDetailClient({ fixtureId }: Props) {
       clearInterval(id)
       document.removeEventListener('visibilitychange', loadSilent)
     }
-  }, [match?.statusShort, loadSilent])
+  }, [match, loadSilent])
 
   if (loading) {
     return (
@@ -126,11 +121,9 @@ export default function MatchDetailClient({ fixtureId }: Props) {
     <div className="wrap space-y-8 py-8 max-w-3xl mx-auto">
       <BackLink href="/matches" label="전체 경기" />
 
-      {/* 스코어카드 */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="h-1.5 bg-gold-gradient" />
         <div className="p-6 space-y-4">
-          {/* 라운드 + 날짜 */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-muted-foreground">
             <span className="font-semibold uppercase tracking-wider text-primary text-xs">
               {match.round ?? '2026 FIFA World Cup'}
@@ -143,15 +136,12 @@ export default function MatchDetailClient({ fixtureId }: Props) {
             </span>
           </div>
 
-          {/* 팀 vs 스코어 */}
           <div className="flex items-center justify-between gap-4">
-            {/* 홈팀 */}
             <div className="flex-1 flex flex-col items-center gap-2 text-center">
               <TeamLogo src={match.home.logo} name={match.home.name} className="w-16 h-16" rounded="rounded-full" textClassName="text-lg" />
               <span className="font-bold text-base sm:text-lg">{match.home.name}</span>
             </div>
 
-            {/* 스코어 */}
             <div className="flex flex-col items-center gap-2 flex-shrink-0">
               {hasStarted ? (
                 <div className="flex items-center gap-3">
@@ -178,14 +168,12 @@ export default function MatchDetailClient({ fixtureId }: Props) {
               )}
             </div>
 
-            {/* 어웨이팀 */}
             <div className="flex-1 flex flex-col items-center gap-2 text-center">
               <TeamLogo src={match.away.logo} name={match.away.name} className="w-16 h-16" rounded="rounded-full" textClassName="text-lg" />
               <span className="font-bold text-base sm:text-lg">{match.away.name}</span>
             </div>
           </div>
 
-          {/* 경기장 */}
           {(match.venueName || match.venueCity) && (
             <p className="text-center text-xs text-muted-foreground">
               &#x1F4CD; {[match.venueName, match.venueCity].filter(Boolean).join(', ')}
@@ -194,21 +182,17 @@ export default function MatchDetailClient({ fixtureId }: Props) {
         </div>
       </div>
 
-      {/* 예측 카드 (경기 시작 전) */}
       {prediction && match.statusShort === 'NS' && (
         <PredictionCard prediction={prediction} match={match} />
       )}
 
-      {/* H2H 기록 */}
       <H2HSection records={h2hRecords} homeTeamApiId={match.home.teamApiId} />
 
-      {/* 라인업 */}
       {hasLineup ? (
         <section className="space-y-4">
           <h2 className="text-xl font-bold">선발 라인업</h2>
           <PitchFormation home={homeLineup!} away={awayLineup!} />
 
-          {/* 교체 선수 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
             {[homeLineup!, awayLineup!].map((team) => (
               <div key={team.teamApiId} className="rounded-xl border border-border bg-card p-4">

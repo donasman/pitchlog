@@ -262,7 +262,7 @@ export default function MatchesPage() {
       {error && !loading && (
         <div style={{ padding: '60px 0', textAlign: 'center' }}>
           <p style={{ color: 'var(--ink-3)', marginBottom: 12 }}>경기 일정을 불러오지 못했습니다</p>
-          <button onClick={load} style={{
+          <button onClick={() => load()} style={{
             padding: '8px 20px', borderRadius: 8, border: '1px solid var(--line)',
             background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer', fontSize: 14,
           }}>다시 시도</button>
