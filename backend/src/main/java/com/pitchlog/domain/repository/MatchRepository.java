@@ -3,6 +3,7 @@ package com.pitchlog.domain.repository;
 import com.pitchlog.domain.entity.Match;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,4 +34,25 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
      */
     @Query("SELECT MAX(m.fixtureId) FROM Match m WHERE m.fixtureId >= 1000000")
     Optional<Integer> findMaxManualFixtureId();
+
+    /** 현재 진행 중인 경기가 있는지 확인 (동적 스케줄러 모드 판단용) */
+    @Query("SELECT COUNT(m) > 0 FROM Match m WHERE m.statusShort IN ('1H', 'HT', '2H', 'ET', 'BT', 'P')")
+    boolean existsLiveMatch();
+
+    /** 킥오프 1시간 이내 대기 중인 경기가 있는지 확인 (라인업 폴링 시작 조건) */
+    @Query("SELECT COUNT(m) > 0 FROM Match m WHERE m.statusShort = 'NS' AND m.matchDate BETWEEN :from AND :to")
+    boolean existsPreMatchWithin(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /**
+     * 라인업 폴링 대상 경기 조회.
+     * - NS 상태이면서 matchDate가 from~to 범위 (킥오프 1시간 전 ~ 1시간 후)
+     * - 킥오프 직후 라인업 미확정 경기까지 포함
+     */
+    @Query("""
+            SELECT m FROM Match m
+            WHERE m.statusShort = 'NS'
+              AND m.matchDate BETWEEN :from AND :to
+            ORDER BY m.matchDate ASC
+            """)
+    List<Match> findPreMatchOrJustStarted(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

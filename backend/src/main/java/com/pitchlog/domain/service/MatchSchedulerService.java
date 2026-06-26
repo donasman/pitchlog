@@ -13,25 +13,35 @@ import com.pitchlog.domain.repository.MatchLineupEntryRepository;
 import com.pitchlog.domain.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 월드컵 경기 중 결과/라인업/순위를 주기적으로 갱신하는 스케줄러.
  * <p>
- * 아키텍처 원칙 준수: 외부 API는 백엔드 스케줄러에서만 호출,
- * 프론트엔드는 항상 자체 DB만 조회.
+ * 3단계 동적 모드로 동작:
+ * <ul>
+ *   <li>IDLE     — 경기 없음. 라이브/라인업 폴링 중단.</li>
+ *   <li>LINEUP   — 킥오프 1시간 이내 NS 경기 존재. 5분마다 라인업 조회.</li>
+ *   <li>LIVE     — 진행 중인 경기 존재. 10초마다 스코어 갱신.</li>
+ * </ul>
+ * <p>
+ * 순위/부상/평점/예측은 기존 고정 주기(@Scheduled)를 유지.
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @ConditionalOnProperty(name = "api-football.scheduler-enabled", havingValue = "true", matchIfMissing = true)
 public class MatchSchedulerService {
 
@@ -42,6 +52,7 @@ public class MatchSchedulerService {
     private final FetchInjuriesStep fetchInjuriesStep;
     private final FetchPlayerRatingsStep fetchPlayerRatingsStep;
     private final FetchPredictionsStep fetchPredictionsStep;
+    private final TaskScheduler taskScheduler;
 
     @Value("${api-football.wc-league-id:1}")
     private Integer leagueId;
@@ -49,12 +60,90 @@ public class MatchSchedulerService {
     @Value("${api-football.season:2026}")
     private Integer season;
 
+    // 현재 동적 태스크 핸들 (null = 비활성)
+    private final AtomicReference<ScheduledFuture<?>> liveTask    = new AtomicReference<>();
+    private final AtomicReference<ScheduledFuture<?>> lineupTask  = new AtomicReference<>();
+
+    // 현재 모드 (로그 추적용)
+    private volatile String currentMode = "IDLE";
+
+    public MatchSchedulerService(
+            WebClient apiFootballClient,
+            MatchRepository matchRepository,
+            MatchLineupEntryRepository lineupEntryRepository,
+            FetchStandingsStep fetchStandingsStep,
+            FetchInjuriesStep fetchInjuriesStep,
+            FetchPlayerRatingsStep fetchPlayerRatingsStep,
+            FetchPredictionsStep fetchPredictionsStep,
+            @Qualifier("dynamicTaskScheduler") TaskScheduler taskScheduler) {
+        this.apiFootballClient      = apiFootballClient;
+        this.matchRepository        = matchRepository;
+        this.lineupEntryRepository  = lineupEntryRepository;
+        this.fetchStandingsStep     = fetchStandingsStep;
+        this.fetchInjuriesStep      = fetchInjuriesStep;
+        this.fetchPlayerRatingsStep = fetchPlayerRatingsStep;
+        this.fetchPredictionsStep   = fetchPredictionsStep;
+        this.taskScheduler          = taskScheduler;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 마스터 루프 — 1분마다 모드 판단 후 동적 태스크 등록/해제
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Scheduled(fixedDelay = 60_000)
+    public void modeController() {
+        try {
+            boolean hasLive = matchRepository.existsLiveMatch();
+            boolean hasPreMatch = !hasLive && matchRepository.existsPreMatchWithin(
+                    LocalDateTime.now(), LocalDateTime.now().plusHours(1));
+
+            String targetMode = hasLive ? "LIVE" : (hasPreMatch ? "LINEUP" : "IDLE");
+
+            if (targetMode.equals(currentMode)) return;
+
+            log.info("[Scheduler] 모드 전환: {} → {}", currentMode, targetMode);
+
+            switch (targetMode) {
+                case "LIVE" -> {
+                    cancelTask(lineupTask);
+                    startTask(liveTask, this::refreshLiveMatchResults, Duration.ofSeconds(10));
+                }
+                case "LINEUP" -> {
+                    cancelTask(liveTask);
+                    startTask(lineupTask, this::refreshLineups, Duration.ofMinutes(5));
+                }
+                case "IDLE" -> {
+                    cancelTask(liveTask);
+                    cancelTask(lineupTask);
+                }
+            }
+            currentMode = targetMode;
+        } catch (Exception e) {
+            log.error("[Scheduler] modeController 오류: {}", e.getMessage());
+        }
+    }
+
+    private void startTask(AtomicReference<ScheduledFuture<?>> ref, Runnable task, Duration interval) {
+        ScheduledFuture<?> existing = ref.get();
+        if (existing != null && !existing.isDone() && !existing.isCancelled()) return;
+        ref.set(taskScheduler.scheduleWithFixedDelay(task, interval));
+    }
+
+    private void cancelTask(AtomicReference<ScheduledFuture<?>> ref) {
+        ScheduledFuture<?> task = ref.getAndSet(null);
+        if (task != null && !task.isDone()) {
+            task.cancel(false);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LIVE 모드 — 10초 폴링 (동적 등록)
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * 5분마다 라이브 경기 결과를 갱신한다.
-     * live=all API로 현재 진행 중인 모든 경기를 1콜로 조회 — 경기당 1콜 방식 대비 콜 절약.
-     * 경기가 없을 때는 API 응답이 empty → DB 갱신 없음.
+     * 진행 중인 모든 경기를 live=all 1콜로 조회해 스코어/경과시간 갱신.
+     * 경기 종료(FT) 감지 시 다음 modeController 사이클에서 자동으로 모드 전환됨.
      */
-    @Scheduled(fixedDelay = 300_000)   // 5분
     @Transactional
     public void refreshLiveMatchResults() {
         try {
@@ -70,11 +159,11 @@ public class MatchSchedulerService {
                     .block();
 
             if (response == null || response.response() == null || response.response().isEmpty()) {
-                log.debug("[Scheduler] No live matches");
+                log.debug("[Scheduler] 라이브 경기 없음 — 다음 modeController에서 모드 전환 예정");
                 return;
             }
 
-            log.info("[Scheduler] Refreshing {} live matches (1 API call)", response.response().size());
+            log.info("[Scheduler] 라이브 갱신 {} 경기 (API 1콜)", response.response().size());
             for (var item : response.response()) {
                 try {
                     Integer fixtureId = item.fixture().id();
@@ -90,19 +179,46 @@ public class MatchSchedulerService {
                             )
                     );
                 } catch (Exception e) {
-                    log.error("[Scheduler] Failed to update fixture {}: {}", item.fixture().id(), e.getMessage());
+                    log.error("[Scheduler] fixture {} 갱신 실패: {}", item.fixture().id(), e.getMessage());
                 }
             }
         } catch (Exception e) {
-            log.error("[Scheduler] Live match refresh failed: {}", e.getMessage());
+            log.error("[Scheduler] 라이브 갱신 실패: {}", e.getMessage());
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // LINEUP 모드 — 5분 폴링 (동적 등록)
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * 10분마다 조 순위를 갱신한다.
-     * 그룹 스테이지(6/11~6/27) 경기가 끝날 때마다 순위가 바뀌므로 주기적 갱신 필요.
+     * 킥오프 1시간 이내 경기의 라인업을 조회.
+     * 이미 저장된 경기는 스킵 (existsByFixtureId 체크).
+     * 라인업 확정 후엔 자동으로 중복 저장되지 않음.
      */
-    @Scheduled(fixedDelay = 600_000)    // 10분
+    @Transactional
+    public void refreshLineups() {
+        LocalDateTime now  = LocalDateTime.now();
+        LocalDateTime from = now.minusHours(1);   // 킥오프 후 1시간까지도 재시도
+        LocalDateTime to   = now.plusHours(1);    // 킥오프 1시간 전부터
+
+        List<Match> targets = matchRepository.findPreMatchOrJustStarted(from, to);
+
+        for (Match match : targets) {
+            if (lineupEntryRepository.existsByFixtureId(match.getFixtureId())) continue;
+            try {
+                fetchAndSaveLineups(match.getFixtureId());
+            } catch (Exception e) {
+                log.error("[Scheduler] 라인업 조회 실패 fixture {}: {}", match.getFixtureId(), e.getMessage());
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 고정 주기 스케줄 (모드와 무관하게 항상 실행)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Scheduled(fixedDelay = 600_000)   // 10분
     @Transactional
     public void refreshStandings() {
         try {
@@ -138,10 +254,6 @@ public class MatchSchedulerService {
         }
     }
 
-    /**
-     * 30분마다 부상/출전정지 목록을 갱신한다.
-     * 전체 교체 방식 — FetchInjuriesStep.fetchAndRefresh() 위임.
-     */
     @Scheduled(fixedDelay = 1_800_000) // 30분
     public void refreshInjuries() {
         try {
@@ -152,10 +264,6 @@ public class MatchSchedulerService {
         }
     }
 
-    /**
-     * 30분마다 종료된 경기의 선수 평점을 수집한다.
-     * 이미 평점이 수집된 경기는 스킵.
-     */
     @Scheduled(fixedDelay = 1_800_000) // 30분
     public void refreshPlayerRatings() {
         try {
@@ -166,9 +274,6 @@ public class MatchSchedulerService {
         }
     }
 
-    /**
-     * 6시간마다 다가오는 경기 예측을 갱신한다.
-     */
     @Scheduled(fixedDelay = 21_600_000) // 6시간
     public void refreshPredictions() {
         try {
@@ -179,27 +284,9 @@ public class MatchSchedulerService {
         }
     }
 
-    /**
-     * 30분마다 라인업 미등록 경기의 라인업을 수집한다.
-     * (킥오프 1시간 전부터 공개되는 것이 일반적)
-     */
-    @Scheduled(fixedDelay = 1_800_000) // 30분
-    @Transactional
-    public void refreshLineups() {
-        LocalDateTime since = LocalDateTime.now().minusHours(3);
-        List<Match> activeMatches = matchRepository.findActiveOrRecentMatches(since);
-
-        for (Match match : activeMatches) {
-            if (lineupEntryRepository.existsByFixtureId(match.getFixtureId())) continue;
-            try {
-                fetchAndSaveLineups(match.getFixtureId());
-            } catch (Exception e) {
-                log.error("[Scheduler] Failed to fetch lineup for fixture {}: {}", match.getFixtureId(), e.getMessage());
-            }
-        }
-    }
-
-    // ── Public methods (also callable from Controller for manual trigger) ────
+    // ═══════════════════════════════════════════════════════════════════════
+    // Public methods (컨트롤러에서 수동 트리거 가능)
+    // ═══════════════════════════════════════════════════════════════════════
 
     @Transactional
     public void refreshFixture(Integer fixtureId) {
@@ -236,7 +323,6 @@ public class MatchSchedulerService {
 
         if (response == null || response.response() == null || response.response().isEmpty()) return;
 
-        // 기존 라인업 삭제 후 재저장 (재수집 시 중복 방지)
         lineupEntryRepository.deleteByFixtureId(fixtureId);
 
         for (ApiFootballLineupsResponse.LineupItem teamLineup : response.response()) {
@@ -248,7 +334,7 @@ public class MatchSchedulerService {
             saveSlots(fixtureId, teamInfo.id(), teamInfo.name(), formation,
                       teamLineup.substitutes(), true);
         }
-        log.info("[Scheduler] Lineups saved for fixture {}", fixtureId);
+        log.info("[Scheduler] 라인업 저장 완료 fixture {}", fixtureId);
     }
 
     private void saveSlots(Integer fixtureId, Integer teamApiId, String teamName,
