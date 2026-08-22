@@ -4,15 +4,16 @@ import { api } from '@/lib/api'
 import type { Country, StandingGroup, MatchSummary } from '@/types'
 import CountryFlag from '@/components/ui/CountryFlag'
 import PageHeader from '@/components/ui/PageHeader'
+import { SITE_URL } from '@/lib/config'
 
 export const metadata: Metadata = {
   title: '2026 월드컵 전체 스쿼드 — 48개국 참가국 명단',
   description: '2026 FIFA 월드컵 48개 참가국 최종 스쿼드 명단을 확인하세요. 조별 정렬 제공.',
-  alternates: { canonical: 'https://pitchlog.com/squads' },
+  alternates: { canonical: `${SITE_URL}/squads` },
   openGraph: {
     title: '2026 월드컵 전체 스쿼드 | PitchLog',
     description: '2026 FIFA 월드컵 48개 참가국 최종 스쿼드 명단을 확인하세요.',
-    url: 'https://pitchlog.com/squads',
+    url: `${SITE_URL}/squads`,
     type: 'website',
   },
 }

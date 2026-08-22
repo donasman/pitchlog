@@ -2,15 +2,16 @@ import type { Metadata } from 'next'
 import { api } from '@/lib/api'
 import type { StatsRanking } from '@/types'
 import StatsRankingPage from '@/components/stats/StatsRankingPage'
+import { SITE_URL } from '@/lib/config'
 
 export const metadata: Metadata = {
   title: '2026 월드컵 경고/퇴장 누적 순위 — Top Cards',
   description: '2026 FIFA 월드컵 경고 누적 순위 및 퇴장 순위. 전 리그 합산 시즌 카드 기준 랭킹.',
-  alternates: { canonical: 'https://pitchlog.com/stats/top-cards' },
+  alternates: { canonical: `${SITE_URL}/stats/top-cards` },
   openGraph: {
     title: '2026 월드컵 경고/퇴장 누적 순위 | PitchLog',
     description: '2026 FIFA 월드컵 경고 누적 순위 및 퇴장 순위.',
-    url: 'https://pitchlog.com/stats/top-cards',
+    url: `${SITE_URL}/stats/top-cards`,
     type: 'website',
   },
 }

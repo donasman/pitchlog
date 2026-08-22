@@ -8,35 +8,33 @@ import PlayerAvatar from '@/components/ui/PlayerAvatar'
 import BackLink from '@/components/ui/BackLink'
 
 export async function generateStaticParams() {
-  try {
-    const countries = await api.getCountries()
-    if (!countries || countries.length === 0) {
-      return [{ slug: '0-placeholder' }]
-    }
-
-    const slugs = new Set<string>()
-    await Promise.all(
-      countries.map(async (country) => {
-        try {
-          const squad = await api.getSquad(country.code)
-          if (squad && squad.players) {
-            squad.players.forEach((p) => {
-              const s = playerSlug(p.id, p.name)
-              if (s) slugs.add(s)
-            })
-          }
-        } catch {
-          // 개별 국가 에러는 무시
-        }
-      })
+  const countries = await api.getCountries()
+  if (!countries || countries.length === 0) {
+    throw new Error(
+      '[generateStaticParams] /api/countries 가 비어 있습니다. ' +
+        '백엔드 상태와 NEXT_PUBLIC_API_URL 을 확인하세요.',
     )
-
-    const result = Array.from(slugs).map((slug) => ({ slug }))
-    return result.length > 0 ? result : [{ slug: '0-placeholder' }]
-  } catch (error) {
-    console.error('Error generating static params for players:', error)
-    return [{ slug: '0-placeholder' }]
   }
+
+  const slugs = new Set<string>()
+  await Promise.all(
+    countries.map(async (country) => {
+      try {
+        const squad = await api.getSquad(country.code)
+        squad?.players?.forEach((p) => {
+          const s = playerSlug(p.id, p.name)
+          if (s) slugs.add(s)
+        })
+      } catch {
+        // 개별 국가 실패는 무시 (전체가 비면 아래에서 빌드 실패)
+      }
+    }),
+  )
+
+  if (slugs.size === 0) {
+    throw new Error('[generateStaticParams] 스쿼드에서 선수를 한 명도 얻지 못했습니다.')
+  }
+  return Array.from(slugs).map((slug) => ({ slug }))
 }
 
 interface Props {

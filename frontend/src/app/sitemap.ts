@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { api } from '@/lib/api'
 import { playerSlug } from '@/lib/utils'
+import { SITE_URL } from '@/lib/config'
 
-const BASE = 'https://pitchlog.com'
+const BASE = SITE_URL
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()

@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import { Space_Grotesk, Space_Mono } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
-import LiveTicker from '@/components/layout/LiveTicker'
+import ResultsTicker from '@/components/layout/ResultsTicker'
 import ThemeToggle from '@/components/layout/ThemeToggle'
+import { SITE_URL } from '@/lib/config'
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -21,8 +22,8 @@ export const metadata: Metadata = {
     default: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
     template: '%s | PitchLog',
   },
-  description: '48개국 736명의 선수, 실시간 경기 스코어와 심층 통계. PitchLog가 2026 월드컵의 모든 순간을 데이터로 추적합니다.',
-  metadataBase: new URL('https://pitchlog.com'),
+  description: '48개국 736명의 선수, 전 경기 결과와 심층 통계. PitchLog가 2026 월드컵의 모든 순간을 데이터로 기록했습니다.',
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     siteName: 'PitchLog',
     locale: 'ko_KR',
@@ -56,10 +57,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Live Ticker */}
           <div className="ticker">
             <span className="ticker-label">
-              <span className="dot" />
-              Live
+              Results
             </span>
-            <LiveTicker />
+            <ResultsTicker />
           </div>
 
           {/* Nav */}
@@ -86,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {/* Nav links */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 {[
-                  { href: '/matches', label: '라이브' },
+                  { href: '/matches', label: '경기' },
                   { href: '/standings', label: '조 순위' },
                   { href: '/squads', label: '참가국' },
                   { href: '/stats', label: '통계' },
@@ -149,7 +149,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <div className="foot-col">
                 <h4>서비스</h4>
-                <Link href="/matches">라이브 경기</Link>
+                <Link href="/matches">전체 경기</Link>
                 <Link href="/standings">조별 순위</Link>
                 <Link href="/squads">참가국 스쿼드</Link>
                 <Link href="/stats">통계 (득점/도움/경고)</Link>

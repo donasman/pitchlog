@@ -9,23 +9,19 @@ import CountryFlag from '@/components/ui/CountryFlag'
 import BackLink from '@/components/ui/BackLink'
 
 export async function generateStaticParams() {
-  try {
-    const countries = await api.getCountries()
-    if (!countries || countries.length === 0) {
-      return [{ country: 'placeholder' }]
-    }
+  const countries = await api.getCountries()
+  const codes = new Set<string>()
+  countries?.forEach((c) => {
+    if (c.code) codes.add(c.code.toLowerCase())
+  })
 
-    const codes = new Set<string>()
-    countries.forEach((c) => {
-      if (c.code) codes.add(c.code.toLowerCase())
-    })
-
-    const result = Array.from(codes).map((code) => ({ country: code }))
-    return result.length > 0 ? result : [{ country: 'placeholder' }]
-  } catch (error) {
-    console.error('Error generating static params for squads:', error)
-    return [{ country: 'placeholder' }]
+  if (codes.size === 0) {
+    throw new Error(
+      '[generateStaticParams] /api/countries 가 비어 있습니다. ' +
+        '백엔드 상태와 NEXT_PUBLIC_API_URL 을 확인하세요.',
+    )
   }
+  return Array.from(codes).map((code) => ({ country: code }))
 }
 
 interface Props {

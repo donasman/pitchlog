@@ -32,7 +32,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
      * 수동 입력 경기(fixtureId >= 1_000_000) 중 최댓값.
      * 다음 수동 fixtureId 생성에 사용.
      */
-    @Query("SELECT MAX(m.fixtureId) FROM Match m WHERE m.fixtureId >= 1000000")
+    @Query("SELECT MAX(m.fixtureId) FROM Match m WHERE m.fixtureId >= 9000000")
     Optional<Integer> findMaxManualFixtureId();
 
     /** 현재 진행 중인 경기가 있는지 확인 (동적 스케줄러 모드 판단용) */
