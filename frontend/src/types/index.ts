@@ -185,6 +185,8 @@ export interface MatchSummary {
 }
 
 export interface LineupPlayer {
+  /** DB PK — 선수 상세 페이지 링크용. 매칭 실패 시 null */
+  playerId: number | null
   playerApiId: number
   name: string
   number: number | null

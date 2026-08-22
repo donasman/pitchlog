@@ -37,6 +37,8 @@ public record MatchDetailResponse(
     ) {}
 
     public record LineupPlayer(
+            /** DB PK — 선수 상세 페이지 링크용. 매칭 실패 시 null */
+            Long playerId,
             Integer playerApiId,
             String name,
             Integer number,
@@ -49,6 +51,15 @@ public record MatchDetailResponse(
     ) {}
 
     public static MatchDetailResponse from(Match m, List<MatchLineupEntry> entries) {
+        return from(m, entries, java.util.Map.of());
+    }
+
+    /**
+     * @param apiIdToPlayerId API-Football playerApiId → DB Player.id 매핑.
+     *                        MatchLineupEntry 는 apiPlayerId 만 들고 있어 별도 조회가 필요하다.
+     */
+    public static MatchDetailResponse from(Match m, List<MatchLineupEntry> entries,
+                                           java.util.Map<Integer, Long> apiIdToPlayerId) {
         // 팀별 분류
         var byTeam = entries.stream()
                 .collect(Collectors.groupingBy(MatchLineupEntry::getTeamApiId));
@@ -67,12 +78,12 @@ public record MatchDetailResponse(
 
                     List<LineupPlayer> startXI = all.stream()
                             .filter(p -> !p.isSubstitute())
-                            .map(MatchDetailResponse::toLineupPlayer)
+                            .map(p -> toLineupPlayer(p, apiIdToPlayerId))
                             .collect(Collectors.toList());
 
                     List<LineupPlayer> subs = all.stream()
                             .filter(MatchLineupEntry::isSubstitute)
-                            .map(MatchDetailResponse::toLineupPlayer)
+                            .map(p -> toLineupPlayer(p, apiIdToPlayerId))
                             .collect(Collectors.toList());
 
                     return new LineupTeam(e.getKey(), teamName, formation, startXI, subs);
@@ -95,8 +106,10 @@ public record MatchDetailResponse(
         );
     }
 
-    private static LineupPlayer toLineupPlayer(MatchLineupEntry e) {
+    private static LineupPlayer toLineupPlayer(MatchLineupEntry e,
+                                               java.util.Map<Integer, Long> apiIdToPlayerId) {
         return new LineupPlayer(
+                apiIdToPlayerId.get(e.getPlayerApiId()),
                 e.getPlayerApiId(), e.getPlayerName(), e.getPlayerNumber(),
                 e.getPos(), e.getGrid(),
                 e.getRating(), e.getMinutesPlayed(), e.getGoalsScored(), e.getAssistsMade()

@@ -1,0 +1,132 @@
+# PitchLog CI
+#
+# 목적: 커밋 단계에서 잡을 수 있는 것을 배포까지 끌고 가지 않는다.
+#   - 파일 오염(null byte / 깨진 UTF-8)  ← 실제로 6회 발생
+#   - 타입 오류 · 린트                    ← 배포 실패로만 발견하던 것
+#   - 백엔드 컴파일 + 테스트              ← H2 인메모리라 외부 DB 불필요
+#
+# ⚠️ 프론트는 `next build` 를 돌리지 않는다.
+#    빌드 시점에 로컬 백엔드(localhost:8080)가 필요한 정적 아카이브 구조라
+#    CI 에서는 반드시 실패한다. 여기서는 타입·린트 검증만 한다.
+#    실제 빌드와 배포는 로컬에서 수행한다 (DEPLOY.md 참조).
+
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+# 같은 브랜치에 연속 푸시하면 이전 실행을 취소
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────
+  file-integrity:
+    name: 파일 무결성
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: null byte 검사
+        run: |
+          hits=$(grep -rlP '\x00' \
+            --include='*.java' --include='*.kts' --include='*.ts' --include='*.tsx' \
+            --include='*.js' --include='*.json' --include='*.yml' --include='*.yaml' \
+            --include='*.sql' --include='*.css' --include='*.md' \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=build \
+            . || true)
+          if [ -n "$hits" ]; then
+            echo "::error::null byte 가 포함된 파일이 있습니다:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "null byte 없음"
+
+      - name: UTF-8 인코딩 검사
+        run: |
+          python3 - <<'PY'
+          import pathlib, sys
+
+          EXT = {'.java', '.kts', '.ts', '.tsx', '.js', '.json',
+                 '.yml', '.yaml', '.sql', '.css', '.md'}
+          SKIP = {'node_modules', '.git', 'build', '.next', 'out', 'generated'}
+
+          bad = []
+          for p in pathlib.Path('.').rglob('*'):
+              if not p.is_file() or p.suffix not in EXT:
+                  continue
+              if SKIP & set(p.parts):
+                  continue
+              try:
+                  p.read_text(encoding='utf-8')
+              except UnicodeDecodeError as e:
+                  bad.append(f'{p} — {e}')
+
+          if bad:
+              print('::error::UTF-8 로 읽을 수 없는 파일이 있습니다:')
+              print('\n'.join(bad))
+              sys.exit(1)
+          print('UTF-8 인코딩 정상')
+          PY
+
+  # ────────────────────────────────────────────────────────────
+  frontend:
+    name: 프론트엔드 (타입 · 린트)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 타입 검사
+        run: npx tsc --noEmit
+
+      - name: 린트
+        run: npm run lint
+
+  # ────────────────────────────────────────────────────────────
+  backend:
+    name: 백엔드 (컴파일 · 테스트)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: gradlew 실행 권한
+        run: chmod +x ./gradlew
+
+      - name: 빌드 + 테스트
+        run: ./gradlew build --no-daemon
+        # 테스트는 H2 인메모리(src/test/resources/application.yml)를 쓰므로
+        # 외부 PostgreSQL 이 없어도 동작한다.
+
+      - name: 테스트 리포트 업로드
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: backend/build/reports/tests/test
+          retention-days: 7
