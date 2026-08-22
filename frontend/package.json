@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prebuild": "node -e \"const fs=require('fs');['.next','out'].forEach(d=>fs.rmSync(d,{recursive:true,force:true}));console.log('[prebuild] .next / out 제거 — 오래된 fetch 캐시 재사용 방지')\""
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.0",

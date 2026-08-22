@@ -49,3 +49,19 @@ export function formatDateTime(iso: string | null): string {
   const mm = String(d.getUTCMinutes()).padStart(2, '0')
   return `${month}월 ${day}일 ${hh}:${mm}`
 }
+
+/** 경기 날짜 키: ISO(UTC) → KST "YYYY-MM-DD" (날짜별 그룹핑용) */
+export function kstDateKey(iso: string | null): string {
+  if (!iso) return ''
+  const d = toKST(iso)
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${d.getUTCFullYear()}-${m}-${day}`
+}
+
+/** 날짜 헤더: "2026-07-19" → "7월 19일 (일)" */
+export function formatDateHeaderKST(dateKey: string): string {
+  const d = new Date(dateKey + 'T00:00:00+09:00')
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`
+}

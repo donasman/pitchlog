@@ -14,7 +14,6 @@ import com.pitchlog.domain.repository.MatchRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -40,7 +39,6 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "api-football.scheduler-enabled", havingValue = "true", matchIfMissing = true)
 public class MatchSchedulerService {
 
     private static final List<String> LIVE_STATUS_CODES =
@@ -60,6 +58,15 @@ public class MatchSchedulerService {
 
     @Value("${api-football.season:2026}")
     private Integer season;
+
+    /**
+     * 주기 폴링 on/off.
+     * Bean 자체는 항상 등록한다 — BackfillLineupsStep 등 배치가
+     * fetchAndSaveLineups() 를 직접 호출하기 때문이다.
+     * 이 플래그는 @Scheduled 폴링만 차단한다.
+     */
+    @Value("${api-football.scheduler-enabled:true}")
+    private boolean schedulerEnabled;
 
     private final AtomicReference<ScheduledFuture<?>> liveTask   = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> lineupTask = new AtomicReference<>();
@@ -90,6 +97,7 @@ public class MatchSchedulerService {
 
     @Scheduled(fixedDelay = 60_000)
     public void modeController() {
+        if (!schedulerEnabled) return;
         try {
             LocalDateTime now = LocalDateTime.now();
 
@@ -235,6 +243,7 @@ public class MatchSchedulerService {
     @Scheduled(fixedDelay = 600_000)   // 10분
     @Transactional
     public void refreshStandings() {
+        if (!schedulerEnabled) return;
         try {
             ApiFootballStandingsResponse response = apiFootballClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -270,6 +279,7 @@ public class MatchSchedulerService {
 
     @Scheduled(fixedDelay = 1_800_000) // 30분
     public void refreshInjuries() {
+        if (!schedulerEnabled) return;
         try {
             fetchInjuriesStep.fetchAndRefresh();
             log.debug("[Scheduler] Injuries 갱신 완료");
@@ -280,6 +290,7 @@ public class MatchSchedulerService {
 
     @Scheduled(fixedDelay = 1_800_000) // 30분
     public void refreshPlayerRatings() {
+        if (!schedulerEnabled) return;
         try {
             fetchPlayerRatingsStep.fetchAndRefresh();
             log.debug("[Scheduler] PlayerRatings 갱신 완료");
@@ -290,6 +301,7 @@ public class MatchSchedulerService {
 
     @Scheduled(fixedDelay = 21_600_000) // 6시간
     public void refreshPredictions() {
+        if (!schedulerEnabled) return;
         try {
             fetchPredictionsStep.fetchAndRefresh();
             log.debug("[Scheduler] Predictions 갱신 완료");

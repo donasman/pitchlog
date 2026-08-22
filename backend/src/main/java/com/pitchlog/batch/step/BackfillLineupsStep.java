@@ -60,7 +60,9 @@ public class BackfillLineupsStep {
         List<Match> targets = matchRepository.findAllByOrderByMatchDateAsc()
                 .stream()
                 .filter(m -> FINISHED_STATUSES.contains(m.getStatusShort()))
-                .filter(m -> m.getFixtureId() != null && m.getFixtureId() < 1_000_000)
+                // 수동 등록 경기(9_000_000+)는 API 라인업이 없으므로 제외.
+                // 예전 경계값 1_000_000 은 2026 fixture_id(1.4M~1.6M)를 전부 걸러버렸다.
+                .filter(m -> m.getFixtureId() != null && m.getFixtureId() < 9_000_000)
                 .filter(m -> !lineupEntryRepository.existsByFixtureId(m.getFixtureId()))
                 .toList();
 

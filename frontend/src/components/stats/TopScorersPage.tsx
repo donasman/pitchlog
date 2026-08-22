@@ -2,15 +2,16 @@ import type { Metadata } from 'next'
 import { api } from '@/lib/api'
 import type { StatsRanking } from '@/types'
 import StatsRankingPage from '@/components/stats/StatsRankingPage'
+import { SITE_URL } from '@/lib/config'
 
 export const metadata: Metadata = {
   title: '2026 월드컵 득점 순위 — Top Scorers',
   description: '2026 FIFA 월드컵 득점 순위를 확인하세요. 전 리그 합산 시즌 골 기준 랭킹.',
-  alternates: { canonical: 'https://pitchlog.com/stats/top-scorers' },
+  alternates: { canonical: `${SITE_URL}/stats/top-scorers` },
   openGraph: {
     title: '2026 월드컵 득점 순위 | PitchLog',
     description: '2026 FIFA 월드컵 득점 순위를 확인하세요. 전 리그 합산 시즌 골 기준 랭킹.',
-    url: 'https://pitchlog.com/stats/top-scorers',
+    url: `${SITE_URL}/stats/top-scorers`,
     type: 'website',
   },
 }

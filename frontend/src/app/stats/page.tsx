@@ -2,11 +2,12 @@ import { api } from '@/lib/api'
 import type { Metadata } from 'next'
 import type { StatsRanking } from '@/types'
 import StatsUnifiedPage from '@/components/stats/StatsUnifiedPage'
+import { SITE_URL } from '@/lib/config'
 
 export const metadata: Metadata = {
   title: '2026 월드컵 통계 — 득점 · 도움 · 경고',
   description: '2026 FIFA 월드컵 득점 순위, 도움 순위, 경고 누적 순위를 한눈에.',
-  alternates: { canonical: 'https://pitchlog.com/stats' },
+  alternates: { canonical: `${SITE_URL}/stats` },
 }
 
 export default async function StatsPage() {

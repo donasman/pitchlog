@@ -28,13 +28,14 @@ public class AdminMatchService {
         return MatchSummaryResponse.from(match, lineupEntryRepository.existsByFixtureId(fixtureId));
     }
 
-    /** 경기 생성 — fixtureId를 1_000_000+ 범위에서 사전 생성 (DB NOT NULL 제약 충족) */
+    /** 경기 생성 — fixtureId를 9_000_000+ 범위에서 사전 생성 (DB NOT NULL 제약 충족)
+     *  API-Football 2026 시즌 fixture_id 가 1.4M~1.6M 대역이라 기존 1_000_000 경계와 충돌했다. */
     @Transactional
     public MatchSummaryResponse createMatch(AdminMatchRequest req) {
-        // 수동 경기는 1_000_000부터 시작하는 범위 사용 (API-Football ID와 분리)
+        // 수동 경기는 9_000_000부터 시작하는 범위 사용 (API-Football ID와 분리)
         int nextFixtureId = matchRepository.findMaxManualFixtureId()
                 .map(max -> max + 1)
-                .orElse(1_000_000);
+                .orElse(9_000_000);
 
         Match match = Match.createManual(
                 nextFixtureId,

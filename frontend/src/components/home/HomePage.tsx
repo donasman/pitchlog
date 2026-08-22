@@ -3,7 +3,9 @@ import Link from 'next/link'
 import { api } from '@/lib/api'
 import type { Country, StatsRanking, MatchSummary, StandingGroup, StandingEntry } from '@/types'
 import { playerSlug } from '@/lib/utils'
-import HomeMatchSection from '@/components/home/HomeMatchSection'
+import HomeResultsSection from '@/components/home/HomeResultsSection'
+import { isKnockoutPhase, getRoundLabel, ROUND_PRIORITY, getTournamentResult } from '@/lib/round'
+import { SITE_URL } from '@/lib/config'
 
 export async function generateMetadata(): Promise<Metadata> {
   let nationCount = 48
@@ -15,15 +17,15 @@ export async function generateMetadata(): Promise<Metadata> {
       playerCount = countries.length * 26
     }
   } catch { /* fallback to defaults */ }
-  const desc = `${nationCount}개국 ${playerCount}명의 선수, 실시간 경기 스코어와 심층 통계. PitchLog가 2026 월드컵의 모든 순간을 데이터로 추적합니다.`
+  const desc = `${nationCount}개국 ${playerCount}명의 선수, 전 경기 결과와 심층 통계. PitchLog가 2026 월드컵의 모든 순간을 데이터로 기록했습니다.`
   return {
     title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
     description: desc,
-    alternates: { canonical: 'https://pitchlog.com' },
+    alternates: { canonical: SITE_URL },
     openGraph: {
       title: 'PitchLog — 2026 FIFA 월드컵 선수 통계',
-      description: `${nationCount}개국 ${playerCount}명의 선수, 실시간 경기 스코어와 심층 통계.`,
-      url: 'https://pitchlog.com',
+      description: `${nationCount}개국 ${playerCount}명의 선수, 전 경기 결과와 심층 통계.`,
+      url: SITE_URL,
       type: 'website',
     },
   }
@@ -257,37 +259,7 @@ function getThirdPlaceRankings(groups: StandingGroup[], matches: MatchSummary[])
   })
 }
 
-/** 토너먼트 페이즈 감지 — 16강 이상 경기가 존재하면 knockout */
-function isKnockoutPhase(matches: MatchSummary[]): boolean {
-  return matches.some(m => {
-    if (!m.round) return false
-    return (
-      m.round.includes('Round of') ||
-      m.round.includes('Quarter') ||
-      m.round.includes('Semi') ||
-      (m.round.includes('Final') && !m.round.includes('Group'))
-    )
-  })
-}
-
-const ROUND_PRIORITY = [
-  'Round of 32',
-  'Round of 16',
-  'Quarter-finals',
-  'Semi-finals',
-  '3rd Place',
-  'Final',
-]
-
-function getRoundLabel(round: string): string {
-  if (round.includes('Round of 32')) return '32강'
-  if (round.includes('Round of 16')) return '16강'
-  if (round.includes('Quarter')) return '8강'
-  if (round.includes('Semi')) return '4강'
-  if (round.includes('3rd')) return '3·4위전'
-  if (round.includes('Final')) return '결승'
-  return round
-}
+/* isKnockoutPhase · ROUND_PRIORITY · getRoundLabel 은 @/lib/round 로 이동 */
 
 /** 현재 활성 토너먼트 라운드 반환 (NS·라이브가 있는 가장 이른 라운드) */
 function getCurrentKnockoutRound(matches: MatchSummary[]): string | null {
@@ -673,7 +645,7 @@ export default async function HomePage() {
   ])
 
   const groupStandings = enrichWithThirdPlace(standings, matches)
-  const liveCount = matches.filter(m => LIVE_STATUS.has(m.statusShort ?? '')).length
+  const champion = getTournamentResult(matches)?.champion?.name ?? null
   const knockout = isKnockoutPhase(matches)
   const thirdPlaceTeams = getThirdPlaceRankings(standings, matches)
   const showThirdPlace = !knockout && thirdPlaceTeams.length > 0
@@ -685,7 +657,7 @@ export default async function HomePage() {
           <div className="hero-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'center' }}>
             <div>
               <div className="hero-tag">
-                <span className="pin">LIVE</span>
+                <span className="pin">FINAL</span>
                 2026 FIFA World Cup
               </div>
               <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 800, fontSize: 'clamp(34px, 4.8vw, 62px)', lineHeight: 1.0, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 22 }}>
@@ -694,11 +666,11 @@ export default async function HomePage() {
                 <span style={{ color: 'var(--gold)' }}>기록</span>된다
               </h1>
               <p style={{ fontSize: 16, color: 'var(--ink-2)', maxWidth: 460, lineHeight: 1.65, marginBottom: 32 }}>
-                {countries.length > 0 ? `${countries.length}개국 ${countries.length * 26}명의 선수` : '48개국'}, 실시간 스코어와 심층 통계를 한곳에서.
+                {countries.length > 0 ? `${countries.length}개국 ${countries.length * 26}명의 선수` : '48개국'}, 대회 전 경기 기록과 심층 통계를 한곳에서.
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 44 }}>
                 <Link href="/matches" className="btn btn-gold" style={{ padding: '11px 22px', fontSize: 14 }}>
-                  라이브 경기 보기
+                  전체 경기 결과
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </Link>
                 <Link href="/squads" className="btn btn-ghost" style={{ padding: '11px 22px', fontSize: 14 }}>참가국 스쿼드</Link>
@@ -712,10 +684,10 @@ export default async function HomePage() {
                   <div className="stat-num">{countries.length > 0 ? countries.length * 26 : '736'}</div>
                   <div className="stat-lab">Players</div>
                 </div>
-                {liveCount > 0 && (
+                {champion && (
                   <div className="stat-item">
-                    <div className="stat-num" style={{ color: 'var(--live)' }}>{liveCount}</div>
-                    <div className="stat-lab" style={{ color: 'var(--live)', opacity: 0.8 }}>Live Now</div>
+                    <div className="stat-num" style={{ color: 'var(--gold)', fontSize: 'clamp(16px, 2vw, 22px)' }}>{champion}</div>
+                    <div className="stat-lab" style={{ color: 'var(--gold)', opacity: 0.8 }}>Champion</div>
                   </div>
                 )}
                 <div className="stat-item">
@@ -756,7 +728,7 @@ export default async function HomePage() {
 
       <section className="block">
         <div className="wrap">
-          <HomeMatchSection />
+          <HomeResultsSection matches={matches} />
         </div>
       </section>
 

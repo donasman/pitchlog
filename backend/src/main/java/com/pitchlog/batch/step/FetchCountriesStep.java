@@ -35,8 +35,8 @@ public class FetchCountriesStep {
     private final CountryRepository countryRepository;
 
     /** API-Football FIFA 월드컵 식별자
-     *  local  : wc-league-id=1, season=2022 (카타르 WC — Free 플랜 접근 가능)
-     *  prod   : wc-league-id=1, season=2026 (2026 WC — Pro 플랜 필요)
+     *  wc-league-id=1, season=2026 (2026 북중미 WC — Pro 플랜 이상 필요)
+     *  Free 플랜은 2022~2024 시즌만 접근 가능하다.
      */
     @Value("${api-football.wc-league-id:1}")
     private Integer leagueId;
@@ -61,15 +61,19 @@ public class FetchCountriesStep {
                             .block();
 
                     if (response == null) {
-                        log.warn("[FetchCountriesStep] 응답 자체가 null");
-                        return RepeatStatus.FINISHED;
+                        throw new IllegalStateException(
+                                "[FetchCountriesStep] API 응답이 null 입니다. 네트워크/엔드포인트를 확인하세요.");
                     }
 
                     // 에러 확인 (errors 는 [] 또는 {"key":"msg"} 두 형태 모두 가능)
                     if (response.errors() != null) {
                         String errStr = response.errors().toString();
                         if (!errStr.equals("[]") && !errStr.equals("{}")) {
-                            log.warn("[FetchCountriesStep] API 에러 응답: {}", errStr);
+                            // API 키 누락·플랜 제한 등은 여기서 즉시 중단한다.
+                            // 예전엔 warn 만 남기고 Job 이 COMPLETED 로 끝나 빈 DB 를 정상으로 착각했다.
+                            throw new IllegalStateException(
+                                    "[FetchCountriesStep] API 에러: " + errStr
+                                    + " — API 키와 구독 플랜(2026 시즌은 Pro 이상)을 확인하세요.");
                         }
                     }
                     log.info("[FetchCountriesStep] results={}, response 크기={}",
@@ -77,8 +81,11 @@ public class FetchCountriesStep {
                             response.response() != null ? response.response().size() : "null");
 
                     if (response.response() == null || response.response().isEmpty()) {
-                        log.warn("[FetchCountriesStep] response 배열이 비어있음 — 구독 플랜 또는 파라미터 확인 필요");
-                        return RepeatStatus.FINISHED;
+                        // 참가국 0개로 이후 Step 이 전부 빈손으로 '성공'하는 것을 막는다.
+                        throw new IllegalStateException(
+                                "[FetchCountriesStep] 참가국을 한 팀도 받지 못했습니다 — "
+                                + "league=" + leagueId + ", season=" + season
+                                + " 조합과 구독 플랜을 확인하세요.");
                     }
 
                     log.info("[FetchCountriesStep] API 응답 팀 수: {}", response.response().size());
