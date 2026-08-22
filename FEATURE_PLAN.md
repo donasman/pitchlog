@@ -1,394 +1,121 @@
-# PitchLog — 미구현 기능 구현 계획
+# PitchLog — 기능 현황 및 확장 계획
 
-> 기준: API-Football `league=1 / season=2026` 제공 데이터 중 현재 미구현 항목  
-> 우선순위: SEO/트래픽 효과 순
-
----
-
-## 우선순위 요약
-
-| 순위 | 기능 | SEO 가치 | 구현 난이도 | 예상 소요 |
-|---|---|---|---|---|
-| 1 | 조 순위 (Standings) | ⭐⭐⭐⭐⭐ | 낮음 | 0.5일 |
-| 2 | 부상/출전정지 (Injuries) | ⭐⭐⭐⭐ | 낮음 | 0.5일 |
-| 3 | 경고 누적 순위 (Top Cards) | ⭐⭐⭐ | 매우 낮음 | 2시간 |
-| 4 | 감독 정보 (Coaches) | ⭐⭐⭐ | 낮음 | 0.5일 |
-| 5 | 경기별 선수 평점 (Player Ratings) | ⭐⭐⭐ | 중간 | 1일 |
-| 6 | 경기 예측 (Predictions) | ⭐⭐⭐ | 중간 | 1일 |
-| 7 | 맞대결 히스토리 (Head to Head) | ⭐⭐ | 중간 | 1일 |
-| 8 | 배당 (Odds) | ⭐⭐ | 중간 | 1일 |
+> 최종 갱신: 2026-08-23
 
 ---
 
-## 1순위 — 조 순위 (Standings)
+## 1. 완료된 기능
 
-### SEO 근거
-"2026 월드컵 조 순위", "A조 순위", "월드컵 조별 결과" — 대회 기간 중 가장 많이 검색되는 키워드.
+2026 월드컵 대상 기능은 배당(Odds)을 제외하고 전부 구현·수집 완료했다.
 
-### API-Football 엔드포인트
-```
-GET /standings?league=1&season=2026
-```
-반환값: 12개 조(A~L), 각 팀별 경기수, 승/무/패, 득점, 실점, 골득실, 승점, 최근폼
-
-### 백엔드 작업
-
-#### 1. Entity — `GroupStanding.java`
-```java
-// domain/entity/GroupStanding.java
-@Entity @Table(name = "group_standings")
-@NoArgsConstructor(access = PROTECTED)
-public class GroupStanding {
-    @Id @GeneratedValue(strategy = IDENTITY)
-    private Long id;
-
-    private String groupName;       // "Group A"
-    private Integer teamApiId;
-    private String teamName;
-    private String teamLogo;
-    private Integer rank;
-    private Integer played;
-    private Integer win;
-    private Integer draw;
-    private Integer lose;
-    private Integer goalsFor;
-    private Integer goalsAgainst;
-    private Integer goalsDiff;
-    private Integer points;
-    private String form;             // "WWDLW"
-    private String description;      // "Promotion - World Cup (Play Offs)"
-    private LocalDateTime updatedAt;
-
-    public static GroupStanding create(...) { ... }
-    public void update(...) { ... }
-}
-```
-
-#### 2. Batch Step — `FetchStandingsStep.java`
-```
-batch/step/FetchStandingsStep.java
-```
-- `GET /standings?league=1&season=2026` 1회 호출
-- 12개 조 × 4팀 = 48개 row Upsert (teamApiId 기준)
-- `SyncWorldCupPlayersJob`에 Step 추가
-
-#### 3. Scheduler — `MatchSchedulerService`에 추가
-```java
-@Scheduled(fixedDelay = 600_000) // 10분마다
-public void refreshStandings() { ... }
-```
-그룹 스테이지(6/11~6/27) 동안 주기적 갱신 필요.
-
-#### 4. API DTO + Controller
-```
-GET /api/standings                → 전체 12개 조
-GET /api/standings?group=A        → 특정 조만
-```
-
-### 프론트엔드 작업
-
-#### 새 페이지
-```
-/standings → 전체 12개 조 순위표
-```
-
-#### 컴포넌트
-```
-src/components/standings/
-├── StandingsPage.tsx         ← 12개 조 탭 or 그리드
-├── GroupTable.tsx            ← 조별 테이블 (rank, team, P/W/D/L/GD/Pts, form)
-└── FormBadge.tsx             ← W/D/L 뱃지 컴포넌트
-```
-
-#### sitemap.ts에 추가
-```ts
-{ url: `${BASE}/standings`, priority: 0.9, changeFrequency: 'daily' }
-```
+| 기능 | 백엔드 | 프론트 | 비고 |
+|---|---|---|---|
+| 참가국 · 스쿼드 | `FetchCountriesStep` `FetchSquadsStep` `SyncFinalSquadStep` | `/squads`, `/squads/[country]` | 48개국 |
+| 선수 상세 · 시즌 통계 | `FetchPlayerStatsStep` | `/players/[slug]` | 1,248명 |
+| 경기 · 결과 | `FetchMatchesStep` | `/matches`, `/matches/[fixtureId]` | 104경기 |
+| 선발 라인업 · 포메이션 | `BackfillLineupsStep` | `PitchFormation` | 5,323건 |
+| 조 순위 | `FetchStandingsStep` | `/standings` | 12개 조 |
+| 부상 · 출전정지 | `FetchInjuriesStep` | `/injuries` | |
+| 경고 · 퇴장 순위 | (기존 통계 재활용) | `/stats/top-cards` | |
+| 감독 정보 | `FetchCoachesStep` | 스쿼드 페이지 | |
+| 경기별 선수 평점 | `FetchPlayerRatingsStep` | 경기 상세 | |
+| 경기 예측 | `FetchPredictionsStep` | 경기 상세 (NS 경기만) | 대회 종료로 표시 안 됨 |
+| 맞대결 히스토리 | `FetchH2HStep` | 경기 상세 | |
+| 월드컵 시즌 통계 | `FetchWorldCupPlayerStatsStep` | 통계 페이지 | 1,498명 |
+| 어드민 (JWT) | `AdminAuth*` `AdminMatch*` | `/admin/*` | 정적 배포본에서는 미동작 |
+| 우승 하이라이트 · 결과 티커 | — | `HomeResultsSection` `ResultsTicker` | 2026-08 추가 |
 
 ---
 
-## 2순위 — 부상/출전정지 (Injuries)
+## 2. 미구현 — 배당 (Odds)
 
-### SEO 근거
-"월드컵 부상 선수 명단", "누가 빠지나", "OO 선수 부상" — 대회 전·중 핫 키워드. 선수 상세 페이지 유입도 증가.
+`schema.sql` 에 `fixture_odds` 테이블만 존재하고 엔티티·배치·API·UI 는 없다.
 
-### API-Football 엔드포인트
-```
-GET /injuries?league=1&season=2026
-GET /injuries?fixture=FIXTURE_ID   ← 특정 경기 부상자
-```
-반환값: 선수명, 팀, 부상 유형(예: "Knee Injury"), 부상 이유, 예상 복귀일
+**보류 사유**
+- 도박 관련 콘텐츠는 Google AdSense 정책상 민감 카테고리
+- API-Football 의 프리매치 배당은 **최근 7일치만** 제공하므로 종료된 대회에는 수집 자체가 불가
 
-### 백엔드 작업
-
-#### 1. Entity — `PlayerInjury.java`
-```java
-// domain/entity/PlayerInjury.java
-@Entity @Table(name = "player_injuries")
-public class PlayerInjury {
-    private Integer playerApiId;
-    private String playerName;
-    private String playerPhoto;
-    private Integer teamApiId;
-    private String teamName;
-    private Integer fixtureId;       // 해당 경기 (null이면 시즌 전체)
-    private String injuryType;       // "Knee Injury"
-    private String reason;           // "Muscular"
-    private LocalDateTime updatedAt;
-}
-```
-
-#### 2. Batch DTO — `ApiFootballInjuriesResponse.java`
-
-#### 3. Scheduler — 30분마다 갱신 (대회 기간 중)
-
-#### 4. API
-```
-GET /api/injuries                  → 전체 부상자 목록
-GET /api/injuries?team=KOR         → 특정 국가 부상자
-```
-
-### 프론트엔드 작업
-
-#### 새 페이지
-```
-/injuries → 전체 부상자 목록 (국가 필터)
-```
-
-#### 선수 상세 페이지 연동
-`/players/[slug]`에 부상 뱃지 표시 (해당 선수가 부상 중이면)
+대회가 끝난 지금 시점에서는 되살릴 실익이 없다. 유럽 리그(v2)에서 진행 중인 시즌을
+다룰 때 재검토한다.
 
 ---
 
-## 3순위 — 경고 누적 순위 (Top Cards)
+## 3. v2 — 26-27 유럽 리그 확장
 
-### SEO 근거
-`/stats/top-scorers`, `/stats/top-assists` 와 나란히 통계 페이지 군 완성. "월드컵 경고 순위"는 중간 수준 검색량.
+2026 월드컵 아카이브가 완결되어, 다음 목표는 연중 운영되는 클럽 축구 서비스다.
+26-27 시즌이 막 시작해 1라운드부터 데이터를 쌓을 수 있는 타이밍이다.
 
-### API-Football 엔드포인트
-```
-GET /players/topyellowcards?league=1&season=2026
-GET /players/topredcards?league=1&season=2026
-```
+### 3-1. 그대로 재사용하는 것
 
-### 백엔드 작업
-별도 엔티티 불필요. `player_season_stats` 테이블의 `yellow_cards`, `red_cards` 컬럼 이미 존재.
+배치 Step 들이 리그·시즌을 `@Value` 로 주입받는 구조라 대부분 그대로 동작한다.
 
 ```java
-// PlayerService에 메서드 추가
-List<StatsRankingResponse> getTopYellowCards(int limit);
-List<StatsRankingResponse> getTopRedCards(int limit);
+@Value("${api-football.wc-league-id:1}")   // 1 → 39(EPL) 로 바꾸면 그대로 돈다
+@Value("${api-football.season:2026}")
 ```
 
-```
-GET /api/players/top-yellowcards?limit=20
-GET /api/players/top-redcards?limit=20
-```
+- 모든 `Fetch*Step` — 월드컵 전용 로직이 없다
+- 엔티티: `Player` `PlayerSeasonStats` `Match` `MatchLineupEntry` `PlayerInjury` `Coach` `H2HRecord`
+- 프론트: `PitchFormation` `RadarStatsChart` `StatsRankingPage` 순위표 경기상세
+- `MatchSchedulerService` 의 IDLE/LINEUP/LIVE 3단계 동적 스케줄러
+  — 월드컵은 한 달이라 거의 못 썼지만 리그는 10개월 내내 매주 경기가 있다
 
-### 프론트엔드 작업
-```
-/stats/top-cards → 경고/퇴장 탭 분리
-```
-기존 `StatsRankingPage.tsx` 재활용, 탭만 추가.
+### 3-2. 바꿔야 하는 것
 
----
-
-## 4순위 — 감독 정보 (Coaches)
-
-### SEO 근거
-"OO 감독", "국가대표 감독" 검색 유입. 국가별 스쿼드 페이지 체류시간 향상.
-
-### API-Football 엔드포인트
-```
-GET /coachs?team=TEAM_API_ID
-```
-반환값: 이름, 국적, 나이, 생년월일, 사진, 현재 팀, 커리어 히스토리
-
-### 백엔드 작업
-
-#### 1. Entity — `Coach.java`
-```java
-@Entity @Table(name = "coaches")
-public class Coach {
-    private Integer teamApiId;
-    private String name;
-    private String firstName;
-    private String lastName;
-    private String nationality;
-    private LocalDate birthDate;
-    private String photo;
-    // career는 JSON으로 저장 또는 별도 테이블
-    private String careerJson;
-    private LocalDateTime updatedAt;
-}
-```
-
-#### 2. Batch Step — `FetchCoachesStep.java`
-48개 팀 × 1req = 48회 호출
-
-#### 3. API
-```
-GET /api/countries/{code}/coach   → 국가별 감독 정보
-```
-또는 기존 `SquadResponse`에 `coach` 필드 추가.
-
-### 프론트엔드 작업
-`/squads/[country]` 페이지에 감독 카드 섹션 추가.
-
----
-
-## 5순위 — 경기별 선수 평점 (Player Ratings)
-
-### SEO 근거
-"OO 선수 경기 평점", "최고 평점 선수" — 경기 후 검색 폭발. 경기 상세 페이지 체류시간 대폭 향상.
-
-### API-Football 엔드포인트
-```
-GET /fixtures/players?fixture=FIXTURE_ID
-```
-반환값: 선수별 평점(0-10), 출전시간, 슛/패스/드리블/태클 등 상세 스탯
-
-### 백엔드 작업
-
-#### 1. `MatchLineupEntry` 엔티티에 필드 추가
-```java
-private BigDecimal rating;       // 0.00 ~ 10.00
-private Integer minutesPlayed;
-private Integer shotsTotal;
-private Integer shotsOn;
-private Integer passesTotal;
-private Integer passesAccuracy;
-private Integer duelsTotal;
-private Integer duelsWon;
-```
-
-또는 별도 `FixturePlayerStats` 엔티티.
-
-#### 2. Scheduler — 경기 종료 후 평점 수집 (MatchSchedulerService에 추가)
-
-#### 3. API — `MatchDetailResponse`에 평점 필드 추가
-
-### 프론트엔드 작업
-- `MatchDetailPage`에 선수 평점 테이블 추가
-- `RadarStatsChart.tsx` 개선 (실제 스탯 데이터 연동)
-- 경기 상세의 라인업에 평점 뱃지 표시
-
----
-
-## 6순위 — 경기 예측 (Predictions)
-
-### SEO 근거
-"월드컵 경기 예측", "OO vs OO 승률" — 경기 전날 검색량 폭발. 바이럴 가능성 높음.
-
-### API-Football 엔드포인트
-```
-GET /predictions?fixture=FIXTURE_ID
-```
-반환값: 예측 승자, 예상 득점, 홈/무/원정 확률(%), 형태 비교, H2H 요약
-
-### 백엔드 작업
-
-#### 1. Entity — `FixturePrediction.java`
-```java
-@Entity @Table(name = "fixture_predictions")
-public class FixturePrediction {
-    private Integer fixtureId;
-    private String predictedWinner;   // "home" | "away" | "draw"
-    private String winnerName;
-    private Integer homeWinPercent;
-    private Integer drawPercent;
-    private Integer awayWinPercent;
-    private String advice;            // "Winner: Brazil"
-    private LocalDateTime updatedAt;
-}
-```
-
-#### 2. Batch — 경기 24시간 전 수집 (또는 FetchMatchesStep에서 함께)
-
-#### 3. API — `MatchDetailResponse`에 `prediction` 필드 추가
-
-### 프론트엔드 작업
-경기 상세 페이지에 "경기 예측" 카드 추가. 승/무/패 확률 바 차트.
-
----
-
-## 7순위 — 맞대결 히스토리 (Head to Head)
-
-### SEO 근거
-"OO vs OO 전적", "맞대결 기록" — 경기 전 콘텐츠로 체류시간 향상.
-
-### API-Football 엔드포인트
-```
-GET /fixtures/headtohead?h2h=TEAM_A_ID-TEAM_B_ID
-```
-반환값: 역대 맞대결 경기 목록 (날짜, 스코어, 대회명)
-
-### 백엔드 작업
-DB 저장 없이 프록시 방식 가능 (배치 시점 캐시).
-
-또는 `Match` 엔티티에 h2h 캐시를 저장하는 방식:
-```
-GET /api/matches/{fixtureId}/h2h  → 두 팀 맞대결 히스토리 반환
-```
-
-### 프론트엔드 작업
-경기 상세 페이지에 "맞대결 기록" 섹션 추가 (최근 10경기).
-
----
-
-## 8순위 — 배당 (Odds)
-
-### 주의사항
-⚠️ 도박 관련 콘텐츠는 Google AdSense 정책에서 민감 카테고리.  
-표시 시 반드시 면책 조항 필요 ("정보 제공 목적, 도박 권유 아님").
-
-### API-Football 엔드포인트
-```
-GET /odds?fixture=FIXTURE_ID      → 프리매치 배당 (최근 7일만 제공)
-GET /odds/live?fixture=FIXTURE_ID → 라이브 배당
-```
-반환값: 북메이커별 홈/무/원정 배당
-
-### 백엔드 작업
-7일 제한이 있으므로 DB 저장 필수 (경기 1주일 전부터 수집).
-
-```java
-// Entity: FixtureOdds
-// Scheduler: 경기 7일 전부터 6시간마다 갱신
-```
-
-### 프론트엔드 작업
-경기 상세 페이지 하단에 "배당 정보" 접이식(accordion) 섹션.
-
----
-
-## 브랜치 전략 (순서대로)
-
-```
-feature/standings           → 1순위
-feature/injuries            → 2순위
-feature/top-cards           → 3순위
-feature/coaches             → 4순위
-feature/player-ratings      → 5순위
-feature/predictions         → 6순위
-feature/headtohead          → 7순위
-feature/odds                → 8순위
-```
-
----
-
-## API 요청 수 예산 (Pro 플랜 7,500 req/일)
-
-| 기능 | 배치/수집 빈도 | 일일 req 추정 |
+| # | 작업 | 규모 |
 |---|---|---|
-| Standings 갱신 | 10분마다 (대회 중) | ~144 |
-| Injuries 갱신 | 30분마다 | ~48 |
-| Coaches 수집 | 1회성 배치 | 48 |
-| Player Ratings | 경기 후 1회 | ~5 (하루 최대) |
-| Predictions 수집 | 경기 24h 전 | ~5 |
-| H2H 수집 | 경기 배치 시 | ~5 |
-| Odds 갱신 | 6시간마다 | ~20 |
-| **기존 스케줄러** | 5분/30분 | ~400 |
-| **합계** | | **~675 / 7,500** |
+| 1 | **`Country` → `Team`** — code/flagUrl/groupName 은 국가대표 개념. 클럽은 엠블럼·소속 리그·홈구장이 필요하다. `SquadEntry`·`Player` 의 country 참조가 전부 영향받는다 | 큼 |
+| 2 | **단일 리그 → 다중 리그** — 현재 `wc-league-id` 가 단일 Integer. `League` 엔티티 + `Match`/`GroupStanding`/`PlayerSeasonStats` 에 league_id FK | 중 |
+| 3 | **조별리그 개념 제거** — `GroupStanding` 의 Group A~L 과 `enrichWithThirdPlace` 3위 추론 로직 삭제. 오히려 단순해진다 | 작음 |
+| 4 | **정적 export 포기** — 매주 경기가 바뀌므로 빌드 스냅샷으로는 불가능. `@cloudflare/next-on-pages`(Edge SSR) 또는 Vercel | 큼 |
+| 5 | **상시 백엔드 확보** — Railway Hobby 등 | 운영 |
 
-여유 충분 — Pro 플랜($19/월)으로 전 기능 커버 가능.
+### 3-3. 규모 감각
+
+| | 팀 | 경기 | 기간 |
+|---|---|---|---|
+| 2026 월드컵 | 48 | 104 | 1개월 |
+| EPL 단독 | 20 | 380 | 10개월 |
+| 5대 리그 | 98 | 1,826 | 10개월 |
+
+### 3-4. API 호출 예산 (Pro 7,500/일)
+
+| 항목 | 방식 | 일일 추정 |
+|---|---|---|
+| 라이브 스코어 | `/fixtures?live=all` 1콜로 전 리그 커버, 경기 시간대만 폴링 | ~300 |
+| 조/리그 순위 | 리그당 10분 주기 (매치데이만) | ~700 |
+| 라인업 | 경기당 1콜 | ~40 / 라운드 |
+| 선수 통계 | 페이지네이션, 주 1회 | ~400 / 주 |
+| 부상 | 리그당 1일 1회 | ~5 |
+
+윈도잉(경기 시간대에만 폴링)은 `MatchSchedulerService` 에 이미 구현돼 있다.
+5대 리그도 Pro 한도 안에서 커버된다.
+
+### 3-5. 권장 진행 순서
+
+1. **EPL 단독(league=39)으로 v1** — 20팀/380경기면 `Team` 모델과 SSR 전환을 검증하기 충분하고 API 예산도 여유롭다
+2. 검증 후 `League` 엔티티를 얹어 리그 추가
+3. 5대 리그 + UCL 확장
+
+### 3-6. 비용
+
+| 항목 | 월 비용 |
+|---|---|
+| API-Football Pro | $19 |
+| 백엔드 호스팅 | ~$5 |
+| Cloudflare Pages | $0 |
+| **합계** | **~$24 (지속)** |
+
+현재 WC 아카이브는 평시 $0 이므로, v2 는 성격이 다른 결정이라는 점을 유의한다.
+
+---
+
+## 4. 기술 부채
+
+| 항목 | 내용 |
+|---|---|
+| Node 버전 | 로컬 20.11.1. wrangler 최신판이 22 를 요구해 `npx wrangler@3` 로 우회 중 |
+| Next.js | 14.2.5 — 보안 권고 있음. 업그레이드 필요 |
+| `pitchlog_dump.sql` | 2026-05 시점의 낡은 덤프. 저장소에서 제거 검토 |
+| `install.cmd` | Claude Code 설치 스크립트로 프로젝트와 무관. 제거 검토 |
+| 어드민 비밀번호 | 기본값 `admin/admin1234!` 그대로. 백엔드를 공개 배포한다면 반드시 변경 |
