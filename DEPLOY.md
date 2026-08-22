@@ -121,11 +121,26 @@ npx serve out -p 3000
 빌드가 실패한다. 로컬에서 만든 `out/` 을 직접 업로드한다.
 
 ```bash
-npm install -g wrangler
-wrangler login
+npx wrangler@3 login          # 최신 wrangler 는 Node 22 필요 → v3 로 우회
 
 cd frontend
-wrangler pages deploy out --project-name=pitchlog
+
+# 검증용 (dev 브랜치 작업 확인)
+npx wrangler@3 pages deploy out --project-name=pitchlog --branch=dev
+# → https://dev.pitchlog.pages.dev
+
+# 운영 반영 (dev → main 머지 후)
+npx wrangler@3 pages deploy out --project-name=pitchlog --branch=main
+# → https://pitchlog.pages.dev
+```
+
+**브랜치 인자를 빼면 현재 git 브랜치 이름으로 배포된다.** 그러면 운영이 아니라
+`<브랜치명>.pitchlog.pages.dev` 프리뷰로 올라가므로 `--branch` 를 반드시 명시한다.
+
+배포 이력 확인:
+
+```bash
+npx wrangler@3 pages deployment list --project-name=pitchlog
 ```
 
 Cloudflare 대시보드 → Pages → 프로젝트 → Settings → Builds & deployments 에서
@@ -148,8 +163,12 @@ Cloudflare 대시보드 → Pages → 프로젝트 → Settings → Builds & dep
 docker compose up -d postgres
 백엔드 기동 → 배치 실행 → DB 검증
 cd frontend && npm run build
-wrangler pages deploy out --project-name=pitchlog
+npx wrangler@3 pages deploy out --project-name=pitchlog --branch=dev    # 검증
+# dev.pitchlog.pages.dev 확인 후 dev → main PR 머지
+npx wrangler@3 pages deploy out --project-name=pitchlog --branch=main   # 운영
 ```
+
+브랜치 전략(main / dev / feature)은 `CLAUDE.md` 의 Git 전략 항목 참조.
 
 ---
 
