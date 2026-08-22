@@ -7,6 +7,7 @@ import com.pitchlog.domain.entity.MatchLineupEntry;
 import com.pitchlog.domain.exception.ResourceNotFoundException;
 import com.pitchlog.domain.repository.MatchLineupEntryRepository;
 import com.pitchlog.domain.repository.MatchRepository;
+import com.pitchlog.domain.repository.PlayerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final MatchLineupEntryRepository lineupEntryRepository;
+    private final PlayerRepository playerRepository;
 
     /** 전체 경기 목록 (날짜 오름차순) */
     public List<MatchSummaryResponse> getAllMatches() {
@@ -48,7 +50,7 @@ public class MatchService {
                 .orElseThrow(() -> ResourceNotFoundException.match(fixtureId));
 
         List<MatchLineupEntry> entries = fetchLineupsSafely(fixtureId);
-        return MatchDetailResponse.from(match, entries);
+        return MatchDetailResponse.from(match, entries, buildPlayerIdMap(entries));
     }
 
     /**
@@ -64,5 +66,24 @@ public class MatchService {
             log.warn("라인업 조회 실패 (fixtureId={}) — 빈 리스트 반환: {}", fixtureId, e.getMessage());
             return List.of();
         }
+    }
+
+    /**
+     * 라인업 항목의 apiPlayerId 를 DB Player.id 로 매핑한다.
+     * MatchLineupEntry 는 Player 와 FK 로 묶여 있지 않아 별도 조회가 필요하다.
+     * 프론트의 선수 상세 페이지(/players/[slug]) 링크에 쓰인다.
+     */
+    private java.util.Map<Integer, Long> buildPlayerIdMap(List<MatchLineupEntry> entries) {
+        var apiIds = entries.stream()
+                .map(MatchLineupEntry::getPlayerApiId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (apiIds.isEmpty()) return java.util.Map.of();
+
+        return playerRepository.findByApiPlayerIdIn(apiIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        com.pitchlog.domain.entity.Player::getApiPlayerId,
+                        com.pitchlog.domain.entity.Player::getId,
+                        (a, b) -> a));
     }
 }

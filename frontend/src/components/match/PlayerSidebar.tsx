@@ -1,82 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { cn } from '@/lib/utils'
-import type { LineupPlayer, SeasonStats } from '@/types'
-import RadarStatsChart, { type PlayerStats } from './RadarStatsChart'
+import { useEffect } from 'react'
+import Link from 'next/link'
+import { cn, playerSlug } from '@/lib/utils'
+import type { LineupPlayer } from '@/types'
 import { POS_COLOR, POS_LABEL } from './PlayerMarker'
-import { API_BASE } from '@/lib/config'
 
-// ── 시즌 통계 집계 → 레이더 스탯 변환 ────────────────────────────────
-// 여러 리그 통계를 합산하여 0-100 척도로 정규화
-function toRadarStats(statsList: SeasonStats[]): PlayerStats {
-  if (statsList.length === 0) return { shooting: 0, passing: 0, dribble: 0, defense: 0, physical: 0, rating: 0 }
-
-  const sum = <K extends keyof SeasonStats>(key: K): number =>
-    statsList.reduce((acc, s) => acc + ((s[key] as number | null) ?? 0), 0)
-
-  const avg = <K extends keyof SeasonStats>(key: K): number => {
-    const vals = statsList.map(s => (s[key] as number | null) ?? null).filter((v): v is number => v !== null)
-    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
-  }
-
-  const shotsTotal      = sum('shotsTotal')
-  const shotsOn         = sum('shotsOn')
-  const passesAccuracy  = avg('passesAccuracy')         // 이미 퍼센트값
-  const dribblesAtt     = sum('dribblesAttempts')
-  const dribblesSucc    = sum('dribblesSuccess')
-  const tacklesTotal    = sum('tacklesTotal')
-  const interceptions   = sum('interceptions')
-  const duelsTotal      = sum('duelsTotal')
-  const duelsWon        = sum('duelsWon')
-  const ratingAvg       = avg('rating')                 // 1-10 → 0-100
-
-  // 유효슈팅률 → shooting (0-100)
-  const shooting  = shotsTotal > 0 ? Math.round((shotsOn / shotsTotal) * 100) : 0
-
-  // 패스정확도 → passing (이미 0-100)
-  const passing   = Math.min(100, Math.round(passesAccuracy))
-
-  // 드리블성공률 → dribble (0-100)
-  const dribble   = dribblesAtt > 0 ? Math.round((dribblesSucc / dribblesAtt) * 100) : 0
-
-  // 태클+인터셉트 → defense (최대 10을 100으로 스케일)
-  const defRaw    = tacklesTotal + interceptions
-  const defense   = Math.min(100, Math.round(defRaw * 5))
-
-  // 듀얼승률 → physical (0-100)
-  const physical  = duelsTotal > 0 ? Math.round((duelsWon / duelsTotal) * 100) : 0
-
-  // 평점 (1-10 → 0-100)
-  const rating    = Math.min(100, Math.round(ratingAvg * 10))
-
-  return { shooting, passing, dribble, defense, physical, rating }
-}
-
-// ── 스탯 바 ────────────────────────────────────────────────────────
-function StatBar({ label, value }: { label: string; value: number }) {
-  const color =
-    value >= 80 ? '#22c55e' :
-    value >= 65 ? '#f59e0b' :
-    value >= 50 ? '#3b82f6' : '#ef4444'
-
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-muted-foreground font-medium">{label}</span>
-        <span className="font-bold tabular-nums" style={{ color }}>{value}</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{ width: `${value}%`, backgroundColor: color }}
-        />
-      </div>
-    </div>
-  )
-}
-
-// ── Props ──────────────────────────────────────────────────────────
 interface Props {
   player: (LineupPlayer & { isHome: boolean }) | null
   open: boolean
@@ -84,8 +13,6 @@ interface Props {
 }
 
 export default function PlayerSidebar({ player, open, onClose }: Props) {
-  const [radarStats, setRadarStats] = useState<PlayerStats | null>(null)
-  const [loadingStats, setLoadingStats] = useState(false)
 
   // ESC로 닫기
   useEffect(() => {
@@ -94,35 +21,12 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  // 선수 변경 시 실 통계 로드
-  useEffect(() => {
-    if (!player) { setRadarStats(null); return }
-    setLoadingStats(true)
-    setRadarStats(null)
-    fetch(`${API_BASE}/api/players/${player.playerApiId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.stats?.length) {
-          setRadarStats(toRadarStats(data.stats as SeasonStats[]))
-        } else {
-          setRadarStats(null)
-        }
-      })
-      .catch(() => setRadarStats(null))
-      .finally(() => setLoadingStats(false))
-  }, [player?.playerApiId])
+  // 정적 아카이브에는 상시 백엔드가 없으므로 런타임에 통계를 가져오지 않는다.
+  // 전체 시즌 통계는 빌드 시점에 생성된 선수 상세 페이지에서 제공한다.
 
   const color    = POS_COLOR[player?.pos ?? ''] ?? '#94a3b8'
   const posLabel = POS_LABEL[player?.pos ?? ''] ?? player?.pos ?? '?'
 
-  const STAT_LABELS: Array<[keyof PlayerStats, string]> = [
-    ['shooting', '슈팅 정확도'],
-    ['passing',  '패스 정확도'],
-    ['dribble',  '드리블 성공률'],
-    ['defense',  '태클+인터셉트'],
-    ['physical', '듀얼 승률'],
-    ['rating',   '평점'],
-  ]
 
   return (
     <>
@@ -203,31 +107,38 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
               </div>
             </div>
 
-            {/* 레이더 차트 */}
-            <div className="flex flex-col items-center pt-5 pb-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                2025-26 Season Stats
-              </p>
-              {loadingStats ? (
-                <div className="w-[180px] h-[180px] rounded-full bg-muted/30 animate-pulse" />
-              ) : radarStats ? (
-                <RadarStatsChart stats={radarStats} size={180} />
+            {/* 시즌 통계는 선수 상세 페이지에서 */}
+            <div className="px-4 py-6">
+              {player.playerId != null ? (
+                <Link
+                  href={`/players/${playerSlug(player.playerId, player.name)}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:border-primary transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">시즌 통계 보기</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      출전·득점·도움·평점 전체 기록
+                    </p>
+                  </div>
+                  <span className="text-primary text-lg flex-shrink-0">→</span>
+                </Link>
               ) : (
-                <div className="flex flex-col items-center justify-center w-[180px] h-[180px] text-center gap-2">
+                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
                   <span className="text-3xl opacity-30">📊</span>
-                  <p className="text-xs text-muted-foreground/60">통계 데이터 없음</p>
+                  <p className="text-xs text-muted-foreground/60">
+                    이 선수의 상세 페이지가 없습니다
+                  </p>
                 </div>
               )}
-            </div>
 
-            {/* 스탯 바 */}
-            {radarStats && (
-              <div className="px-4 pb-4 space-y-3">
-                {STAT_LABELS.map(([key, label]) => (
-                  <StatBar key={key} label={label} value={radarStats[key]} />
-                ))}
-              </div>
-            )}
+              {/* 이 경기 기록 */}
+              <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <MatchStat label="출전" value={player.minutesPlayed != null ? `${player.minutesPlayed}분` : '-'} />
+                <MatchStat label="평점" value={player.rating != null ? player.rating.toFixed(1) : '-'} />
+                <MatchStat label="득점" value={String(player.goalsScored ?? 0)} />
+                <MatchStat label="도움" value={String(player.assistsMade ?? 0)} />
+              </dl>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-64 text-center px-6 gap-3">
@@ -241,4 +152,14 @@ export default function PlayerSidebar({ player, open, onClose }: Props) {
     </>
   
 )
+}
+
+/** 이 경기에서의 개인 기록 한 칸 */
+function MatchStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-muted/40 px-3 py-2">
+      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+      <dd className="font-semibold tabular-nums">{value}</dd>
+    </div>
+  )
 }

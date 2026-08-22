@@ -1,11 +1,10 @@
 package com.pitchlog.domain.service;
 
 import com.pitchlog.api.dto.StatsRankingResponse;
-import com.pitchlog.domain.entity.Player;
-import com.pitchlog.domain.entity.PlayerSeasonStats;
+import com.pitchlog.domain.exception.ResourceNotFoundException;
 import com.pitchlog.domain.repository.PlayerRepository;
 import com.pitchlog.domain.repository.PlayerSeasonStatsRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.pitchlog.domain.repository.PlayerSeasonStatsRepository.PlayerStatsProjection;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,10 +13,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
+/**
+ * 집계는 DB(aggregateStatsByActivePlayers)가 담당하므로,
+ * 이 테스트는 서비스의 책임인 "정렬 + limit 적용"만 검증한다.
+ */
 @ExtendWith(MockitoExtension.class)
 class PlayerServiceTest {
 
@@ -30,115 +35,88 @@ class PlayerServiceTest {
     @Mock
     private PlayerSeasonStatsRepository playerSeasonStatsRepository;
 
-    private Player playerA;
-    private Player playerB;
-
-    @BeforeEach
-    void setUp() {
-        playerA = createPlayer(1L, 1001, "Player A", "Brazil");
-        playerB = createPlayer(2L, 1002, "Player B", "France");
+    /** PlayerStatsProjection 스텁 생성 */
+    private static PlayerStatsProjection proj(long id, String name, String nationality,
+                                              int goals, int assists, int apps,
+                                              int yellow, int red) {
+        return new PlayerStatsProjection() {
+            @Override public Long   getPlayerId()    { return id; }
+            @Override public String getPlayerName()  { return name; }
+            @Override public String getPhotoUrl()    { return null; }
+            @Override public String getNationality() { return nationality; }
+            @Override public int    getGoals()       { return goals; }
+            @Override public int    getAssists()     { return assists; }
+            @Override public int    getAppearances() { return apps; }
+            @Override public int    getYellowCards() { return yellow; }
+            @Override public int    getRedCards()    { return red; }
+        };
     }
 
-    @Test
-    @DisplayName("getTopScorers: 여러 리그 통계가 선수별로 합산되어 득점 순 정렬")
-    void getTopScorers_aggregatesGoalsAcrossLeagues() {
-        // given: playerA는 두 리그에 걸쳐 총 9골, playerB는 한 리그에서 10골
-        List<PlayerSeasonStats> stats = List.of(
-                createStats(playerA, 1, 5, 3),   // playerA 리그1: 5골
-                createStats(playerA, 2, 4, 2),   // playerA 리그2: 4골 → 합산 9골
-                createStats(playerB, 3, 10, 7)   // playerB 리그1: 10골
-        );
-        given(playerSeasonStatsRepository.findAllByActivePlayers()).willReturn(stats);
+    private static final List<PlayerStatsProjection> SAMPLE = List.of(
+            proj(1L, "Player A", "Brazil",  12, 3, 30, 2, 0),
+            proj(2L, "Player B", "France",   5, 9, 28, 1, 0),
+            proj(3L, "Player C", "Spain",    8, 1, 25, 4, 1)
+    );
 
-        // when
+    @Test
+    @DisplayName("getTopScorers: 득점 내림차순으로 정렬된다")
+    void getTopScorers_sortsByGoalsDesc() {
+        given(playerSeasonStatsRepository.aggregateStatsByActivePlayers()).willReturn(SAMPLE);
+
         List<StatsRankingResponse> result = playerService.getTopScorers(10);
 
-        // then
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).playerName()).isEqualTo("Player B"); // 10골 1위
-        assertThat(result.get(0).goals()).isEqualTo(10);
-        assertThat(result.get(1).playerName()).isEqualTo("Player A"); // 9골 2위
-        assertThat(result.get(1).goals()).isEqualTo(9);
+        assertThat(result).extracting(StatsRankingResponse::playerName)
+                .containsExactly("Player A", "Player C", "Player B");
+        assertThat(result.get(0).goals()).isEqualTo(12);
     }
 
     @Test
-    @DisplayName("getTopScorers: limit 이상 선수가 있으면 limit 개수만 반환")
+    @DisplayName("getTopScorers: limit 개수만 반환한다")
     void getTopScorers_respectsLimit() {
-        List<PlayerSeasonStats> stats = List.of(
-                createStats(playerA, 1, 5, 2),
-                createStats(playerB, 2, 10, 3)
-        );
-        given(playerSeasonStatsRepository.findAllByActivePlayers()).willReturn(stats);
+        given(playerSeasonStatsRepository.aggregateStatsByActivePlayers()).willReturn(SAMPLE);
 
-        List<StatsRankingResponse> result = playerService.getTopScorers(1);
+        List<StatsRankingResponse> result = playerService.getTopScorers(2);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).goals()).isEqualTo(10);
+        assertThat(result).hasSize(2);
+        assertThat(result.get(1).playerName()).isEqualTo("Player C");
     }
 
     @Test
-    @DisplayName("getTopAssists: 여러 리그 도움이 선수별로 합산되어 도움 순 정렬")
-    void getTopAssists_aggregatesAssistsAcrossLeagues() {
-        List<PlayerSeasonStats> stats = List.of(
-                createStats(playerA, 1, 3, 6),   // playerA 리그1: 6도움
-                createStats(playerA, 2, 2, 4),   // playerA 리그2: 4도움 → 합산 10도움
-                createStats(playerB, 3, 8, 8)    // playerB: 8도움
-        );
-        given(playerSeasonStatsRepository.findAllByActivePlayers()).willReturn(stats);
+    @DisplayName("getTopAssists: 도움 내림차순으로 정렬된다")
+    void getTopAssists_sortsByAssistsDesc() {
+        given(playerSeasonStatsRepository.aggregateStatsByActivePlayers()).willReturn(SAMPLE);
 
         List<StatsRankingResponse> result = playerService.getTopAssists(10);
 
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).playerName()).isEqualTo("Player A"); // 10도움 1위
-        assertThat(result.get(0).assists()).isEqualTo(10);
+        assertThat(result).extracting(StatsRankingResponse::playerName)
+                .containsExactly("Player B", "Player A", "Player C");
     }
 
     @Test
-    @DisplayName("getTopScorers: goals 가 null 인 통계는 0으로 처리")
-    void getTopScorers_treatsNullGoalsAsZero() {
-        List<PlayerSeasonStats> stats = List.of(
-                createStats(playerA, 1, null, null)
-        );
-        given(playerSeasonStatsRepository.findAllByActivePlayers()).willReturn(stats);
+    @DisplayName("getTopYellowCards: 경고 내림차순으로 정렬된다")
+    void getTopYellowCards_sortsByYellowDesc() {
+        given(playerSeasonStatsRepository.aggregateStatsByActivePlayers()).willReturn(SAMPLE);
 
-        List<StatsRankingResponse> result = playerService.getTopScorers(10);
+        List<StatsRankingResponse> result = playerService.getTopYellowCards(10);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).goals()).isZero();
-        assertThat(result.get(0).assists()).isZero();
+        assertThat(result.get(0).playerName()).isEqualTo("Player C");
+        assertThat(result.get(0).yellowCards()).isEqualTo(4);
     }
 
-    // ─── 테스트 픽스처 헬퍼 ──────────────────────────────────────────────────
+    @Test
+    @DisplayName("getTopScorers: 집계 결과가 비면 빈 목록을 반환한다")
+    void getTopScorers_emptyAggregation() {
+        given(playerSeasonStatsRepository.aggregateStatsByActivePlayers()).willReturn(List.of());
 
-    private Player createPlayer(Long id, int apiId, String name, String nationality) {
-        Player player = Player.create(apiId, name, null, null, nationality,
-                null, null, null, null);
-        // 리플렉션으로 ID 주입 (JPA 생성 필드이므로)
-        try {
-            var field = Player.class.getDeclaredField("id");
-            field.setAccessible(true);
-            field.set(player, id);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return player;
+        assertThat(playerService.getTopScorers(10)).isEmpty();
     }
 
-    private PlayerSeasonStats createStats(Player player, int leagueApiId,
-                                          Integer goals, Integer assists) {
-        PlayerSeasonStats stats = PlayerSeasonStats.create(
-                player, 100, "Team", leagueApiId, "League " + leagueApiId, 2025);
-        stats.updateStats(
-                10, null, null,          // appearances, lineups, minutes
-                goals, assists, null,     // goals, assists, saves
-                0, 0, null,              // yellowCards, redCards, rating
-                null, null,              // passesTotal, passesAccuracy
-                null, null,              // shotsTotal, shotsOn
-                null, null,              // dribblesAttempts, dribblesSuccess
-                null, null,              // tacklesTotal, interceptions
-                null, null,              // duelsTotal, duelsWon
-                null, null               // foulsCommitted, foulsDrawn
-        );
-        return stats;
+    @Test
+    @DisplayName("findById: 존재하지 않는 선수면 ResourceNotFoundException")
+    void findById_notFound() {
+        given(playerRepository.findById(999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> playerService.findById(999L))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }
