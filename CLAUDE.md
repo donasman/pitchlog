@@ -105,11 +105,22 @@ pitchlog/
 
 ## Git 전략
 
-### 브랜치 — GitHub Flow
+### 브랜치 — main / dev / feature
 
-- `main` 은 항상 배포 가능한 상태
-- 모든 작업은 feature 브랜치 → PR → main
-- **직접 main 커밋 금지**
+```
+feature/*  ──PR──▶  dev  ──PR──▶  main
+   작업            통합·검증        실 운영
+```
+
+| 브랜치 | 역할 | 규칙 |
+|---|---|---|
+| `main` | **실 운영** — pitchlog.pages.dev 에 배포된 상태와 일치 | 직접 커밋 금지. `dev` 에서만 머지 |
+| `dev` | 통합·검증 — 여러 작업을 모아 빌드·확인 | 직접 커밋 금지. feature 에서만 머지 |
+| `feature/*` 등 | 실제 작업 | `dev` 에서 분기 |
+
+- 작업 브랜치는 항상 **`dev` 에서 분기**한다 (`main` 아님)
+- 핫픽스처럼 운영에 즉시 반영해야 하는 경우에만 `main` 에서 분기하고,
+  머지 후 `dev` 에도 반영해 두 브랜치가 갈라지지 않게 한다
 
 | 접두사 | 용도 | 예시 |
 |---|---|---|
@@ -119,6 +130,18 @@ pitchlog/
 | `docs/` | 문서 | `docs/deploy-guide` |
 | `refactor/` | 리팩토링 | `refactor/static-archive` |
 | `test/` | 테스트 | `test/backfill-step` |
+
+### 배포와의 대응
+
+정적 아카이브는 로컬 빌드 결과물을 wrangler 로 직접 올린다.
+브랜치와 배포 대상이 1:1로 대응한다.
+
+| 브랜치 | 배포 명령 | 결과 URL |
+|---|---|---|
+| `dev` | `npx wrangler@3 pages deploy out --project-name=pitchlog --branch=dev` | `https://dev.pitchlog.pages.dev` (검증용) |
+| `main` | `npx wrangler@3 pages deploy out --project-name=pitchlog --branch=main` | `https://pitchlog.pages.dev` (운영) |
+
+**dev 에서 눈으로 확인한 뒤 main 에 머지·배포한다.** 운영에 바로 올리지 않는다.
 
 ### 커밋 — Conventional Commits
 
@@ -140,8 +163,23 @@ chore(deploy): wrangler 직접 업로드 방식으로 전환
 
 - 기능 하나 = PR 하나
 - PR 제목도 Conventional Commits 형식
+- base 브랜치를 확인할 것 — 작업 PR 의 base 는 **`dev`**, 릴리스 PR 의 base 만 `main`
 - `Closes #이슈번호` 로 이슈 자동 닫기
-- **Cloudflare Pages 체크 실패는 정상이다** — 머지를 막지 않는다
+- **Cloudflare Pages 체크 실패는 정상이다** — CI 가 로컬 백엔드에 닿을 수 없어서다. 머지를 막지 않는다
+
+### 릴리스 절차 (dev → main)
+
+```bash
+git checkout dev && git pull origin dev
+cd frontend && npm run build          # dev 기준으로 빌드
+npx wrangler@3 pages deploy out --project-name=pitchlog --branch=dev
+# https://dev.pitchlog.pages.dev 에서 확인
+
+# 문제 없으면 GitHub 에서 dev → main PR 생성·머지
+git checkout main && git pull origin main
+cd frontend && npm run build
+npx wrangler@3 pages deploy out --project-name=pitchlog --branch=main
+```
 
 ---
 
