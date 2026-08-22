@@ -48,13 +48,14 @@ function buildFullGroupMap(
   for (const sg of standings) {
     if (!/^Group [A-L]$/.test(sg.groupName)) continue
     const letter = sg.groupName.replace('Group ', '')
-    sg.standings.forEach((entry, idx) => {
+    for (const entry of sg.standings) {
       if (entry.teamApiId != null) {
         idToGroup.set(entry.teamApiId, letter)
-        idToRank.set(entry.teamApiId, idx + 1)
+        idToRank.set(entry.teamApiId, entry.rank)
       }
-      nameToInfo.set(normName(entry.teamName), { group: letter, rank: idx + 1 })
-    })
+      // 배열 인덱스가 아니라 API 가 준 rank 를 쓴다 — 공동 순위를 그대로 반영하기 위함
+      nameToInfo.set(normName(entry.teamName), { group: letter, rank: entry.rank })
+    }
   }
 
   // Step 2: Group Stage(3위 종합) 팀을 매치 상대팀 기준으로 조 추론
@@ -81,12 +82,14 @@ function buildFullGroupMap(
       }
     }
 
-    // Group Stage 팀을 nameToInfo에 추가 (rank=3 고정)
+    // Group Stage 팀 추가 — Group A~L 에 이미 있으면 덮어쓰지 않는다(조별 순위가 우선)
     for (const entry of groupStage.standings) {
       if (entry.teamApiId == null) continue
+      const normN = normName(entry.teamName)
+      if (nameToInfo.has(normN)) continue
       const group = gsIdToGroup.get(entry.teamApiId)
       if (group) {
-        nameToInfo.set(normName(entry.teamName), { group, rank: 3 })
+        nameToInfo.set(normN, { group, rank: entry.rank })
       }
     }
   }
@@ -207,9 +210,14 @@ export default async function SquadsPage() {
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
                           {country.code}
-                          {!isUnknown && country.groupRank < 99 && (
-                            <span style={{ marginLeft: 6 }}>· {country.groupRank}위</span>
-                          )}
+                          {!isUnknown && country.groupRank < 99 && (() => {
+                            const tied = list.filter(c => c.groupRank === country.groupRank).length > 1
+                            return (
+                              <span style={{ marginLeft: 6 }}>
+                                · {tied ? '공동 ' : ''}{country.groupRank}위
+                              </span>
+                            )
+                          })()}
                         </div>
                       </div>
                       <svg style={{ width: 14, height: 14, color: 'var(--ink-3)', flexShrink: 0 }}

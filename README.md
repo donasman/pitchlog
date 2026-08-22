@@ -1,88 +1,108 @@
 # PitchLog
 
-2026 FIFA 월드컵 참가국 선수 정보 및 통계 서비스.
+2026 FIFA 월드컵 선수 정보·통계 아카이브
 
-> **2026 월드컵 포맷 변경**
-> 역대 최초 **48개국** 체제. 12개 조 × 4팀 → 조별 상위 2팀 + 조 3위 중 8팀 = 32강 토너먼트 진행.
+**🔗 https://pitchlog.pages.dev**
+
+> 2026 월드컵은 역대 최초 **48개국** 체제로 치러졌다.
+> 12개 조 × 4팀 → 조 1·2위와 조 3위 상위 8팀이 32강 토너먼트에 진출.
+> 2026-07-19 결승에서 **스페인이 아르헨티나를 1-0으로 꺾고 우승**했다.
+
+## 담긴 데이터
+
+| 항목 | 수량 |
+|---|---|
+| 참가국 | 48 |
+| 경기 | 104 (조별리그 ~ 결승) |
+| 선수 | 1,248 |
+| 시즌 통계 | 6,532 |
+| 선발 라인업 | 5,323 (104경기 전부) |
+| 조 순위 | 12개 조 |
+
+제공 화면: 우승 하이라이트 · 토너먼트 브라켓 · 전 경기 결과 · 경기별 선발 포메이션 ·
+국가별 스쿼드 · 선수 상세 · 득점/도움/경고 순위 · 조별 순위 · 부상자 명단
 
 ## 기술 스택
 
 | 영역 | 기술 |
-|------|------|
-| 백엔드 | Spring Boot 3.x · Java 21 · Spring Batch 5.x |
+|---|---|
+| 백엔드 | Spring Boot 3.2 · Java 21 · Spring Batch 5 |
 | ORM | Spring Data JPA · QueryDSL |
-| DB | Railway PostgreSQL |
-| 프론트엔드 | Next.js 14 (App Router) · TypeScript |
+| DB | PostgreSQL 16 (Docker) |
+| 프론트엔드 | Next.js 14 App Router · TypeScript |
 | 스타일 | Tailwind CSS · shadcn/ui |
-| 프론트 배포 | Cloudflare Pages (정적 빌드) |
-| 백엔드 배포 | Railway |
+| 데이터 출처 | API-Football (v3) |
+| 배포 | Cloudflare Pages (정적 업로드) |
 
-## 로컬 개발 환경 실행
+## 아키텍처
 
-### 1. 사전 요구사항
-- Java 21+
-- Node.js 20+
-- Docker Desktop
+대회가 종료되어 **상시 가동 백엔드 없는 정적 아카이브**로 운영한다.
 
-### 2. 데이터베이스 실행
-```bash
-docker-compose up -d
+```
+로컬 PC
+ ├─ Docker PostgreSQL (5433)      ← 데이터 보관
+ └─ Spring Boot (8080, 수동 기동)  ← 배치 수집 + 빌드 시점 API
+        │
+        │  next build — 데이터를 HTML 에 구움
+        ▼
+   frontend/out/  ──wrangler──▶  Cloudflare Pages
 ```
 
-### 3. 백엔드 실행 (IntelliJ Community)
-1. `backend/` 폴더를 IntelliJ로 열기
-2. Gradle 동기화 완료 후 `PitchlogApplication` 실행
-3. Run Configuration → Active Profile: `local`
+배포된 사이트는 런타임에 API 를 호출하지 않으므로 서버 비용이 들지 않는다.
+데이터 갱신이 필요할 때만 로컬에서 백엔드를 띄워 배치를 돌리고 재빌드한다.
 
-### 4. 프론트엔드 실행 (VS Code)
+## 로컬 실행
+
+### 사전 요구사항
+- Java 21+
+- Node.js 20+ (배포 툴 최신판은 22 필요)
+- Docker Desktop
+- API-Football **Pro 플랜** 키 (Free 는 2022~2024 시즌만 접근 가능)
+
+### 1. 데이터베이스
+
+```bash
+docker compose up -d postgres
+```
+
+### 2. 백엔드
+
+IntelliJ 에서 `PitchlogApplication` 실행.
+Run Configuration → Environment variables:
+
+```
+SPRING_PROFILES_ACTIVE=local;API_FOOTBALL_KEY=<32자 키>
+```
+
+또는 터미널에서:
+
+```bash
+export API_FOOTBALL_KEY=<키>
+cd backend && ./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+### 3. 프론트엔드
+
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev      # http://localhost:3000
 ```
 
-브라우저에서 http://localhost:3000 접속
+### 4. 데이터 수집 / 빌드 / 배포
 
-## 프로젝트 구조
+`DEPLOY.md` 참조.
 
-```
-pitchlog/
-├── backend/                    # Spring Boot
-│   └── src/main/java/com/pitchlog/
-│       ├── PitchlogApplication.java
-│       ├── config/             # QueryDSL, WebClient 설정
-│       ├── domain/
-│       │   ├── entity/         # JPA 엔티티 4개
-│       │   ├── repository/     # Spring Data JPA
-│       │   └── service/        # 비즈니스 로직
-│       ├── batch/
-│       │   ├── job/            # SyncWorldCupPlayersJob
-│       │   ├── step/           # FetchCountries/Squads/PlayerStats
-│       │   └── dto/            # 외부 API 응답 DTO
-│       └── api/
-│           ├── controller/     # REST API
-│           └── dto/            # 응답 DTO (record)
-├── frontend/                   # Next.js 14
-│   └── src/
-│       ├── app/                # App Router 페이지
-│       ├── components/         # UI 컴포넌트
-│       ├── lib/                # API 클라이언트, 유틸
-│       └── types/              # TypeScript 타입
-├── docker-compose.yml
-└── README.md
-```
+## 문서
 
-## DB 스키마
+| 파일 | 내용 |
+|---|---|
+| `CLAUDE.md` | 개발 가이드 — 구조, Git 전략, 코드 규칙, 알려진 함정 |
+| `DEPLOY.md` | 데이터 수집·빌드·배포 절차 |
+| `FEATURE_PLAN.md` | 기능 완료 현황 및 v2 확장 설계 |
 
-- `countries` — 참가국 마스터 (Upsert 기준: `code`)
-- `players` — 선수 마스터 (Upsert 기준: `api_player_id`)
-- `player_season_stats` — 시즌/리그별 통계 (복합 UNIQUE)
-- `squad_entries` — 월드컵 최종 엔트리
+## 다음 단계
 
-## 개발 로드맵
-
-- [x] 1주차: DB 스키마/ERD 설계
-- [ ] 2주차: Spring Batch 파이프라인 구현
-- [ ] 3주차: Next.js UI 개발 및 REST API 연동
-- [ ] 4주차: 최종 엔트리 동기화, 데이터 정제 및 테스트
-- [ ] 5주차: Railway + Cloudflare Pages 배포
+26-27 유럽 리그로의 확장을 검토 중이다. 배치 Step 이 리그·시즌을 주입받는 구조라
+재사용성이 높지만, `Country → Team` 모델 전환과 정적 export 포기(Edge SSR)가 필요하다.
+자세한 내용은 `FEATURE_PLAN.md` 참조.
